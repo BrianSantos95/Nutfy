@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../services/supabase';
 import { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  signIn: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -17,25 +17,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for changes on auth state (logged in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    // Check local storage for mock session
+    const stored = localStorage.getItem('nutfy_auth_user');
+    if (stored) {
+        try {
+            const userData = JSON.parse(stored);
+            setUser(userData);
+            setSession({ user: userData } as Session);
+        } catch (e) {
+            console.error("Erro ao restaurar sessão local", e);
+        }
+    }
+    setLoading(false);
   }, []);
 
+  const signIn = async (email: string) => {
+    const mockUser = {
+        id: 'local-user-id', // ID fixo para facilitar testes locais ou gerar uuid
+        email: email,
+        aud: 'authenticated',
+        role: 'authenticated',
+        created_at: new Date().toISOString(),
+        app_metadata: {},
+        user_metadata: {},
+        identities: [],
+        phone: '',
+        confirmed_at: new Date().toISOString(),
+        last_sign_in_at: new Date().toISOString(),
+        factors: []
+    } as unknown as User;
+
+    localStorage.setItem('nutfy_auth_user', JSON.stringify(mockUser));
+    setUser(mockUser);
+    setSession({ user: mockUser } as Session);
+  };
+
   const signOut = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem('nutfy_auth_user');
     setUser(null);
     setSession(null);
   };
@@ -44,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     session,
     loading,
+    signIn,
     signOut
   };
 

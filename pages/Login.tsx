@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../services/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Leaf, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,18 +16,16 @@ export const Login: React.FC = () => {
     setLoading(true);
     setError('');
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setError('Email ou senha inválidos.');
-      setLoading(false);
-    } else {
-      // Redireciona para home
-      navigate('/');
-    }
+    // Simulação de delay para UX
+    setTimeout(async () => {
+        if (email && password) {
+            await signIn(email);
+            navigate('/');
+        } else {
+            setError('Preencha todos os campos.');
+            setLoading(false);
+        }
+    }, 800);
   };
 
   return (
@@ -53,7 +52,7 @@ export const Login: React.FC = () => {
          <div className="max-w-md w-full">
             <div className="text-center lg:text-left mb-10">
                <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Bem-vindo de volta</h2>
-               <p className="text-slate-500 dark:text-slate-400">Insira suas credenciais para acessar sua conta.</p>
+               <p className="text-slate-500 dark:text-slate-400">Modo Offline Ativo. Entre com seus dados locais.</p>
             </div>
 
             {error && (

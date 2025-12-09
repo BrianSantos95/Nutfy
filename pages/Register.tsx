@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../services/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Leaf, Mail, Lock, Loader2, CheckCircle } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -27,19 +28,12 @@ export const Register: React.FC = () => {
 
     setLoading(true);
 
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (signUpError) {
-      setError(signUpError.message);
-      setLoading(false);
-    } else {
-      // Login automático após cadastro ou redireciona
-      alert('Cadastro realizado com sucesso!');
-      navigate('/');
-    }
+    // Simulação de registro local
+    setTimeout(async () => {
+        await signIn(email);
+        alert('Conta local criada com sucesso!');
+        navigate('/');
+    }, 800);
   };
 
   return (
@@ -129,7 +123,7 @@ export const Register: React.FC = () => {
                  disabled={loading}
                  className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 py-4 rounded-2xl font-bold text-lg shadow-lg shadow-slate-200 dark:shadow-slate-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                >
-                  {loading ? <Loader2 className="animate-spin" /> : 'Criar Conta'}
+                  {loading ? <Loader2 className="animate-spin" /> : 'Criar Conta Local'}
                </button>
             </form>
 

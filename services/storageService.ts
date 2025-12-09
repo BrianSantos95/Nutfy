@@ -1,5 +1,4 @@
 import { Student, Meal, ProfessionalProfile, Assessment, Subscription } from '../types';
-import { supabase } from './supabase';
 
 const BASE_KEYS = {
   STUDENTS: 'nutriplan_students',
@@ -11,8 +10,15 @@ const BASE_KEYS = {
 
 // Helper para obter a chave baseada no usuário logado
 const getKey = (baseKey: string): string => {
-  // Tenta pegar a sessão do localStorage do Supabase
+  // Check local mock session first
   try {
+      const localUser = localStorage.getItem('nutfy_auth_user');
+      if (localUser) {
+          const user = JSON.parse(localUser);
+          if (user.id) return `${baseKey}_${user.id}`;
+      }
+
+      // Fallback: Check Supabase session (Legacy support or if switched back)
       const storageKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
       if (storageKey) {
           const sessionData = JSON.parse(localStorage.getItem(storageKey) || '{}');
@@ -24,7 +30,7 @@ const getKey = (baseKey: string): string => {
   } catch (e) {
       console.error("Erro ao recuperar sessão para storage", e);
   }
-  // Fallback para chave sem usuário (comportamento antigo ou deslogado)
+  // Fallback para chave sem usuário
   return baseKey;
 };
 

@@ -1,6 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+// Repositório desconectado.
+// O aplicativo agora opera em modo 100% local (Offline/Browser Storage).
+// As credenciais antigas foram removidas por segurança.
 
-const supabaseUrl = 'https://fkwdggojpzocbcmyeyjd.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrd2RnZ29qcHpvY2JjbXlleWpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyMzc2ODUsImV4cCI6MjA4MDgxMzY4NX0.JiBLkJXUh0JK_lCx-DdCiV9QAe7jz4kwUDUSXridLa4';
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = null;

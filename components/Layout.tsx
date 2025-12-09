@@ -141,7 +141,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack = fals
                 onClick={handleLogout}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 font-bold text-xs transition-colors"
               >
-                <LogOut size={16} /> Sair
+                <LogOut size={16} /> Desconectar
               </button>
            </div>
         </div>
