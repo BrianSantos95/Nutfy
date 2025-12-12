@@ -17,17 +17,21 @@ export const PlanPreview: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
-    if (studentId && assessmentId) {
-      const students = storageService.getStudents();
-      setStudent(students.find(s => s.id === studentId) || null);
+    const fetchData = async () => {
+        if (studentId && assessmentId) {
+            const students = await storageService.getStudents();
+            setStudent(students.find(s => s.id === studentId) || null);
 
-      const assessments = storageService.getAssessments(studentId);
-      setAssessment(assessments.find(a => a.id === assessmentId) || null);
+            const assessments = await storageService.getAssessments(studentId);
+            setAssessment(assessments.find(a => a.id === assessmentId) || null);
 
-      const allMeals = storageService.getMeals(assessmentId);
-      setMeals(allMeals.sort((a, b) => a.time.localeCompare(b.time)));
-    }
-    setProfile(storageService.getProfile());
+            const allMeals = await storageService.getMeals(assessmentId);
+            setMeals(allMeals.sort((a, b) => a.time.localeCompare(b.time)));
+        }
+        const prof = await storageService.getProfile();
+        setProfile(prof);
+    };
+    fetchData();
   }, [studentId, assessmentId]);
 
   const handleExport = () => {
@@ -49,7 +53,7 @@ export const PlanPreview: React.FC = () => {
     // Pequeno delay para permitir que o React renderize o estado de loading
     setTimeout(() => {
         try {
-          const success = generatePDF(student, assessment!, meals);
+          const success = generatePDF(student, assessment!, meals, profile);
           if (success) {
             // Sucesso
             alert("PDF gerado com sucesso.");

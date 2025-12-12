@@ -1,163 +1,146 @@
 import { Student, Meal, ProfessionalProfile, Assessment, Subscription } from '../types';
 
-const BASE_KEYS = {
-  STUDENTS: 'nutriplan_students',
-  ASSESSMENTS: 'nutriplan_assessments',
-  MEALS: 'nutriplan_meals',
-  PROFILE: 'nutriplan_profile',
-  SUBSCRIPTION: 'nutriplan_subscription'
-};
+// Simula delay de rede
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper para obter a chave baseada no usuário logado
-const getKey = (baseKey: string): string => {
-  // Check local mock session first
-  try {
-      const localUser = localStorage.getItem('nutfy_auth_user');
-      if (localUser) {
-          const user = JSON.parse(localUser);
-          if (user.id) return `${baseKey}_${user.id}`;
-      }
-
-      // Fallback: Check Supabase session (Legacy support or if switched back)
-      const storageKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token'));
-      if (storageKey) {
-          const sessionData = JSON.parse(localStorage.getItem(storageKey) || '{}');
-          const userId = sessionData?.user?.id;
-          if (userId) {
-              return `${baseKey}_${userId}`;
-          }
-      }
-  } catch (e) {
-      console.error("Erro ao recuperar sessão para storage", e);
-  }
-  // Fallback para chave sem usuário
-  return baseKey;
+const DATA_KEYS = {
+    STUDENTS: 'nutfy_students',
+    ASSESSMENTS: 'nutfy_assessments',
+    MEALS: 'nutfy_meals',
+    PROFILE: 'nutfy_profile',
+    SUBSCRIPTION: 'nutfy_subscription'
 };
 
 export const storageService = {
   // --- Students ---
-  getStudents: (): Student[] => {
-    try {
-      const data = localStorage.getItem(getKey(BASE_KEYS.STUDENTS));
-      return data ? JSON.parse(data) : [];
-    } catch (e) { return []; }
+  getStudents: async (): Promise<Student[]> => {
+    await delay(100);
+    const data = localStorage.getItem(DATA_KEYS.STUDENTS);
+    return data ? JSON.parse(data) : [];
   },
 
-  saveStudents: (students: Student[]) => {
-    localStorage.setItem(getKey(BASE_KEYS.STUDENTS), JSON.stringify(students));
-  },
-
-  // --- Assessments (Avaliações) ---
-  getAssessments: (studentId?: string): Assessment[] => {
-    try {
-      const data = localStorage.getItem(getKey(BASE_KEYS.ASSESSMENTS));
-      const all: Assessment[] = data ? JSON.parse(data) : [];
-      if (studentId) {
-        return all.filter(a => a.studentId === studentId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      }
-      return all;
-    } catch (e) { return []; }
-  },
-
-  saveAssessment: (assessment: Assessment) => {
-    const all = storageService.getAssessments();
-    const index = all.findIndex(a => a.id === assessment.id);
+  saveStudent: async (student: Student) => {
+    await delay(200);
+    const students = await storageService.getStudents();
+    const index = students.findIndex(s => s.id === student.id);
     
-    // Se for uma nova avaliação ativa, arquiva as anteriores deste aluno
+    if (index >= 0) {
+        students[index] = student;
+    } else {
+        students.push(student);
+    }
+    localStorage.setItem(DATA_KEYS.STUDENTS, JSON.stringify(students));
+  },
+
+  deleteStudent: async (id: string) => {
+      await delay(200);
+      const students = await storageService.getStudents();
+      const filtered = students.filter(s => s.id !== id);
+      localStorage.setItem(DATA_KEYS.STUDENTS, JSON.stringify(filtered));
+      
+      // Limpeza em cascata simples
+      const assessments = await storageService.getAssessments();
+      const keptAssessments = assessments.filter(a => a.studentId !== id);
+      localStorage.setItem(DATA_KEYS.ASSESSMENTS, JSON.stringify(keptAssessments));
+  },
+
+  // --- Assessments ---
+  getAssessments: async (studentId?: string): Promise<Assessment[]> => {
+    await delay(100);
+    const data = localStorage.getItem(DATA_KEYS.ASSESSMENTS);
+    const all: Assessment[] = data ? JSON.parse(data) : [];
+    if (studentId) return all.filter(a => a.studentId === studentId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return all.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  },
+
+  saveAssessment: async (assessment: Assessment) => {
+    await delay(200);
+    const all = await storageService.getAssessments();
+    
+    // Arquiva outros se este for ativo
     if (assessment.status === 'active') {
         all.forEach(a => {
-            if (a.studentId === assessment.studentId) a.status = 'archived';
+            if (a.studentId === assessment.studentId && a.id !== assessment.id) {
+                a.status = 'archived';
+            }
         });
     }
 
+    const index = all.findIndex(a => a.id === assessment.id);
     if (index >= 0) {
-      all[index] = assessment;
+        all[index] = assessment;
     } else {
-      all.push(assessment);
+        all.push(assessment);
     }
-    localStorage.setItem(getKey(BASE_KEYS.ASSESSMENTS), JSON.stringify(all));
+    localStorage.setItem(DATA_KEYS.ASSESSMENTS, JSON.stringify(all));
   },
 
-  deleteAssessment: (id: string) => {
-     const all = storageService.getAssessments();
+  deleteAssessment: async (id: string) => {
+     await delay(200);
+     const all = await storageService.getAssessments();
      const filtered = all.filter(a => a.id !== id);
-     localStorage.setItem(getKey(BASE_KEYS.ASSESSMENTS), JSON.stringify(filtered));
+     localStorage.setItem(DATA_KEYS.ASSESSMENTS, JSON.stringify(filtered));
   },
 
   // --- Meals ---
-  // Agora filtra por AssessmentId preferencialmente
-  getMeals: (assessmentId?: string): Meal[] => {
-    try {
-      const data = localStorage.getItem(getKey(BASE_KEYS.MEALS));
-      const all: Meal[] = data ? JSON.parse(data) : [];
-      if (assessmentId) {
-        return all.filter(m => m.assessmentId === assessmentId);
-      }
-      return all;
-    } catch (e) { return []; }
+  getMeals: async (assessmentId?: string): Promise<Meal[]> => {
+    await delay(100);
+    const data = localStorage.getItem(DATA_KEYS.MEALS);
+    const all: Meal[] = data ? JSON.parse(data) : [];
+    if (assessmentId) return all.filter(m => m.assessmentId === assessmentId);
+    return all;
   },
 
-  saveMeals: (meals: Meal[]) => {
-    // Carrega tudo, remove os do assessment atual (para substituir), e adiciona os novos
-    const all = storageService.getMeals(); // Pega todos sem filtro
-    if (meals.length > 0) {
-        const assessmentId = meals[0].assessmentId;
-        const others = all.filter(m => m.assessmentId !== assessmentId);
-        localStorage.setItem(getKey(BASE_KEYS.MEALS), JSON.stringify([...others, ...meals]));
-    } else {
-        // Caso de deleção total, lógica precisa ser tratada no componente ou aqui se passarmos o ID
-        localStorage.setItem(getKey(BASE_KEYS.MEALS), JSON.stringify(meals));
-    }
-  },
-
-  // Helper para salvar refeição única sem sobrescrever tudo
-  saveMeal: (meal: Meal) => {
-      const all = storageService.getMeals(); // todos
+  saveMeal: async (meal: Meal) => {
+      await delay(200);
+      const all = await storageService.getMeals();
       const index = all.findIndex(m => m.id === meal.id);
       if (index >= 0) {
           all[index] = meal;
       } else {
           all.push(meal);
       }
-      localStorage.setItem(getKey(BASE_KEYS.MEALS), JSON.stringify(all));
+      localStorage.setItem(DATA_KEYS.MEALS, JSON.stringify(all));
   },
 
-  deleteMeal: (id: string) => {
-      const all = storageService.getMeals();
+  deleteMeal: async (id: string) => {
+      await delay(200);
+      const all = await storageService.getMeals();
       const filtered = all.filter(m => m.id !== id);
-      localStorage.setItem(getKey(BASE_KEYS.MEALS), JSON.stringify(filtered));
+      localStorage.setItem(DATA_KEYS.MEALS, JSON.stringify(filtered));
   },
 
   // --- Profile ---
-  getProfile: (): ProfessionalProfile | null => {
-    try {
-      const data = localStorage.getItem(getKey(BASE_KEYS.PROFILE));
-      return data ? JSON.parse(data) : null;
-    } catch (e) { return null; }
+  getProfile: async (): Promise<ProfessionalProfile | null> => {
+    await delay(100);
+    const data = localStorage.getItem(DATA_KEYS.PROFILE);
+    return data ? JSON.parse(data) : null;
   },
 
-  saveProfile: (profile: ProfessionalProfile) => {
-    localStorage.setItem(getKey(BASE_KEYS.PROFILE), JSON.stringify(profile));
+  saveProfile: async (profile: ProfessionalProfile) => {
+    await delay(200);
+    localStorage.setItem(DATA_KEYS.PROFILE, JSON.stringify(profile));
   },
 
   // --- Subscription ---
-  getSubscription: (): Subscription | null => {
-    try {
-        const data = localStorage.getItem(getKey(BASE_KEYS.SUBSCRIPTION));
-        return data ? JSON.parse(data) : null;
-    } catch (e) { return null; }
+  getSubscription: async (): Promise<Subscription | null> => {
+      await delay(100);
+      const data = localStorage.getItem(DATA_KEYS.SUBSCRIPTION);
+      return data ? JSON.parse(data) : null;
   },
 
-  saveSubscription: (sub: Subscription) => {
-    localStorage.setItem(getKey(BASE_KEYS.SUBSCRIPTION), JSON.stringify(sub));
+  saveSubscription: async (sub: Subscription) => {
+    await delay(200);
+    localStorage.setItem(DATA_KEYS.SUBSCRIPTION, JSON.stringify(sub));
   },
 
+  // --- Files (Local FileReader) ---
   fileToBase64: (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
     });
   }
 };

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { Student, Assessment } from '../types';
 import { storageService } from '../services/storageService';
-import { Activity, Calendar, Plus, ChevronRight, TrendingUp, Scale, Trash2, Clock, RotateCw, X, Edit2 } from 'lucide-react';
+import { Activity, Calendar, Plus, ChevronRight, TrendingUp, Scale, Trash2, Clock, RotateCw, X, Edit2, Loader2, AlertTriangle } from 'lucide-react';
 
 export const PatientProgress: React.FC = () => {
   const navigate = useNavigate();
@@ -14,49 +14,76 @@ export const PatientProgress: React.FC = () => {
   // Modal de Renovação
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [renewDate, setRenewDate] = useState('');
+  const [isRenewing, setIsRenewing] = useState(false);
+
+  // Modal de Exclusão
+  const [assessmentToDelete, setAssessmentToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    if (studentId) {
-      const students = storageService.getStudents();
-      const s = students.find(st => st.id === studentId);
-      if (s) {
-        setStudent(s);
-        setAssessments(storageService.getAssessments(studentId));
-        // Default renew date: today + 30 days
-        const nextMonth = new Date();
-        nextMonth.setDate(nextMonth.getDate() + 30);
-        setRenewDate(nextMonth.toISOString().split('T')[0]);
-      } else {
-          navigate('/');
-      }
-    }
+    const load = async () => {
+        if (studentId) {
+            const students = await storageService.getStudents();
+            const s = students.find(st => st.id === studentId);
+            if (s) {
+                setStudent(s);
+                const assessmentList = await storageService.getAssessments(studentId);
+                setAssessments(assessmentList);
+                // Default renew date: today + 30 days
+                const nextMonth = new Date();
+                nextMonth.setDate(nextMonth.getDate() + 30);
+                setRenewDate(nextMonth.toISOString().split('T')[0]);
+            } else {
+                navigate('/');
+            }
+        }
+    };
+    load();
   }, [studentId, navigate]);
 
-  const handleDeleteAssessment = (e: React.MouseEvent, id: string) => {
+  const requestDeleteAssessment = (e: React.MouseEvent, id: string) => {
       e.stopPropagation();
-      if(confirm("Tem certeza? Isso apagará também o plano alimentar vinculado a esta avaliação.")) {
-          storageService.deleteAssessment(id);
-          setAssessments(storageService.getAssessments(studentId));
+      setAssessmentToDelete(id);
+  };
+
+  const confirmDeleteAssessment = async () => {
+      if (!assessmentToDelete || !studentId) return;
+      
+      setIsDeleting(true);
+      try {
+          await storageService.deleteAssessment(assessmentToDelete);
+          const updated = await storageService.getAssessments(studentId);
+          setAssessments(updated);
+          setAssessmentToDelete(null);
+      } catch (error) {
+          alert("Erro ao excluir avaliação.");
+      } finally {
+          setIsDeleting(false);
       }
   };
 
-  const handleRenewPlan = () => {
+  const handleRenewPlan = async () => {
       if (!student || !renewDate) return;
       
-      const newStartDate = new Date().toISOString().split('T')[0];
-      const updatedStudent: Student = {
-          ...student,
-          planStartDate: newStartDate,
-          planEndDate: renewDate
-      };
+      setIsRenewing(true);
+      try {
+          const newStartDate = new Date().toISOString().split('T')[0];
+          const updatedStudent: Student = {
+              ...student,
+              planStartDate: newStartDate,
+              planEndDate: renewDate
+          };
 
-      const allStudents = storageService.getStudents();
-      const newStudentsList = allStudents.map(s => s.id === student.id ? updatedStudent : s);
-      storageService.saveStudents(newStudentsList);
-      
-      setStudent(updatedStudent);
-      setShowRenewModal(false);
-      alert('Plano renovado com sucesso!');
+          await storageService.saveStudent(updatedStudent);
+          
+          setStudent(updatedStudent);
+          setShowRenewModal(false);
+          alert('Plano renovado com sucesso!');
+      } catch (e: any) {
+          alert('Erro ao renovar: ' + e.message);
+      } finally {
+          setIsRenewing(false);
+      }
   };
 
   if (!student) return null;
@@ -64,7 +91,8 @@ export const PatientProgress: React.FC = () => {
   // Lógica de Status para Badge
   const getDaysRemaining = (endDateStr?: string) => {
     if (!endDateStr) return null;
-    const end = new Date(endDateStr);
+    // Adiciona T12:00:00 para garantir que o fuso horário não volte o dia
+    const end = new Date(endDateStr + 'T12:00:00');
     const now = new Date();
     end.setHours(0,0,0,0);
     now.setHours(0,0,0,0);
@@ -106,8 +134,8 @@ export const PatientProgress: React.FC = () => {
                     <span className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-700">
                         <Clock size={14} className={daysRemaining !== null && daysRemaining <= 3 ? 'text-red-400' : 'text-slate-400'} />
                         {daysRemaining !== null && daysRemaining < 0 
-                            ? `Expirou dia ${new Date(student.planEndDate).toLocaleDateString('pt-BR')}`
-                            : `Vence em ${daysRemaining} dias (${new Date(student.planEndDate).toLocaleDateString('pt-BR')})`
+                            ? `Expirou dia ${new Date(student.planEndDate + 'T12:00:00').toLocaleDateString('pt-BR')}`
+                            : `Vence em ${daysRemaining} dias (${new Date(student.planEndDate + 'T12:00:00').toLocaleDateString('pt-BR')})`
                         }
                     </span>
                 )}
@@ -171,7 +199,7 @@ export const PatientProgress: React.FC = () => {
                                     <div className="flex items-center gap-2 mb-2">
                                         <Calendar size={16} className="text-slate-400" />
                                         <span className="font-bold text-slate-800 dark:text-white text-lg">
-                                            {new Date(assessment.date).toLocaleDateString('pt-BR')}
+                                            {new Date(assessment.date + 'T12:00:00').toLocaleDateString('pt-BR')}
                                         </span>
                                     </div>
                                     <div className="flex gap-6 text-sm text-slate-600 dark:text-slate-400">
@@ -208,7 +236,7 @@ export const PatientProgress: React.FC = () => {
                                         <Edit2 size={16} />
                                     </button>
                                     <button 
-                                      onClick={(e) => handleDeleteAssessment(e, assessment.id)}
+                                      onClick={(e) => requestDeleteAssessment(e, assessment.id)}
                                       className="text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                                       title="Excluir Avaliação"
                                     >
@@ -252,7 +280,7 @@ export const PatientProgress: React.FC = () => {
 
       {/* MODAL DE RENOVAÇÃO */}
       {showRenewModal && (
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
               <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-slate-200 dark:border-slate-800">
                   <div className="flex justify-between items-center mb-6">
                       <h3 className="text-lg font-bold text-slate-800 dark:text-white">Renovar Plano</h3>
@@ -276,10 +304,52 @@ export const PatientProgress: React.FC = () => {
 
                       <button 
                         onClick={handleRenewPlan}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-200 dark:shadow-none mt-2"
+                        disabled={isRenewing}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-200 dark:shadow-none mt-2 flex justify-center items-center gap-2"
                       >
-                          Confirmar Renovação
+                          {isRenewing ? <Loader2 className="animate-spin" /> : 'Confirmar Renovação'}
                       </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* MODAL DE EXCLUSÃO DE AVALIAÇÃO */}
+      {assessmentToDelete && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 w-full max-w-md border border-red-100 dark:border-red-900/30">
+                  <div className="flex justify-between items-start mb-6">
+                      <div className="flex items-center gap-3">
+                          <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-xl">
+                              <AlertTriangle className="text-red-600 dark:text-red-400 w-6 h-6" />
+                          </div>
+                          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Excluir Avaliação?</h3>
+                      </div>
+                      <button onClick={() => setAssessmentToDelete(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                          <X size={20}/>
+                      </button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                      <p className="text-slate-600 dark:text-slate-400 text-sm">
+                          Esta ação é irreversível. O plano alimentar vinculado a esta avaliação também será removido permanentemente.
+                      </p>
+
+                      <div className="flex gap-3 pt-2">
+                          <button 
+                              onClick={() => setAssessmentToDelete(null)}
+                              className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold py-3.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                          >
+                              Cancelar
+                          </button>
+                          <button 
+                              onClick={confirmDeleteAssessment}
+                              disabled={isDeleting}
+                              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-red-200 dark:shadow-none flex items-center justify-center gap-2"
+                          >
+                              {isDeleting ? <Loader2 className="animate-spin" /> : 'Excluir'}
+                          </button>
+                      </div>
                   </div>
               </div>
           </div>

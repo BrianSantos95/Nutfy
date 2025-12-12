@@ -25,14 +25,17 @@ export const MealForm: React.FC = () => {
   });
 
   useEffect(() => {
-    if (isEditing && mealId) {
-      const allMeals = storageService.getMeals(assessmentId);
-      const meal = allMeals.find(m => m.id === mealId);
-      if (meal) {
-        setFormData(meal);
-        setMealType(meal.type);
-      }
-    }
+    const loadMeal = async () => {
+        if (isEditing && mealId) {
+            const allMeals = await storageService.getMeals(assessmentId);
+            const meal = allMeals.find(m => m.id === mealId);
+            if (meal) {
+                setFormData(meal);
+                setMealType(meal.type);
+            }
+        }
+    };
+    loadMeal();
   }, [isEditing, mealId, assessmentId]);
 
   // Auto-calculate total calories when foods change
@@ -65,7 +68,7 @@ export const MealForm: React.FC = () => {
     setFormData(prev => ({ ...prev, foods: (prev.foods || []).filter(f => f.id !== id) }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.time) { alert('Preencha o nome da refeição e o horário/frequência.'); return; }
     
@@ -93,7 +96,7 @@ export const MealForm: React.FC = () => {
       foods: formData.foods || []
     };
 
-    storageService.saveMeal(mealPayload);
+    await storageService.saveMeal(mealPayload);
     navigate(`/student/${studentId}/assessment/${assessmentId}/meals`);
   };
 
@@ -214,7 +217,7 @@ export const MealForm: React.FC = () => {
                                    <div className="flex-1 w-full">
                                        <label className="text-[10px] uppercase font-bold text-slate-400 ml-1 mb-1 block">Alimento *</label>
                                        <input 
-                                         placeholder="Ex: Pão Integral" 
+                                         placeholder="Ex: Cuscuz" 
                                          value={food.name} 
                                          onChange={e => handleUpdateFood(food.id, 'name', e.target.value)} 
                                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-emerald-400 focus:bg-white rounded-2xl font-bold text-slate-700 outline-none transition-colors"
@@ -225,7 +228,7 @@ export const MealForm: React.FC = () => {
                                    <div className="w-full md:w-32">
                                        <label className="text-[10px] uppercase font-bold text-slate-400 ml-1 mb-1 block">Qtd *</label>
                                        <input 
-                                         placeholder="Ex: 2 fat" 
+                                         placeholder="Ex: 200g" 
                                          value={food.quantity} 
                                          onChange={e => handleUpdateFood(food.id, 'quantity', e.target.value)} 
                                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:border-emerald-400 focus:bg-white rounded-2xl font-bold text-slate-700 outline-none transition-colors"
@@ -266,7 +269,7 @@ export const MealForm: React.FC = () => {
                                       <label className="text-[10px] uppercase font-bold text-slate-400">Substituições (Opcional)</label>
                                    </div>
                                    <input 
-                                      placeholder="Ex: Tapioca ou Cuscuz" 
+                                      placeholder="Ex: Tapioca ou Cuscuz 200g" 
                                       value={food.substitutions} 
                                       onChange={e => handleUpdateFood(food.id, 'substitutions', e.target.value)} 
                                       className="w-full px-4 py-2 bg-transparent hover:bg-slate-50 border-b border-transparent hover:border-slate-200 focus:border-emerald-400 rounded-lg text-sm text-slate-600 outline-none transition-all placeholder:text-slate-300" 

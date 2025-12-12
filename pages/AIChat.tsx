@@ -8,6 +8,41 @@ interface Message {
   text: string;
 }
 
+// Componente aprimorado para renderizar texto com formatação de listas e negrito
+const MessageContent: React.FC<{ text: string }> = ({ text }) => {
+    return (
+        <div className="space-y-2">
+            {text.split('\n').map((line, i) => {
+                // Identifica se a linha é um item de lista (começa com *, - ou •)
+                const isList = line.trim().match(/^[\*\-•]\s/);
+                
+                // Processa negrito (**texto**)
+                const parts = line.split(/(\*\*.*?\*\*)/g).map((part, j) => {
+                    if (part.startsWith('**') && part.endsWith('**')) {
+                        return <strong key={j}>{part.slice(2, -2)}</strong>;
+                    }
+                    return part;
+                });
+
+                if (isList) {
+                    return (
+                        <div key={i} className="flex gap-2 pl-2">
+                            <span className="text-emerald-500 font-bold mt-1">•</span>
+                            <span className="flex-1 text-slate-700 dark:text-slate-200 leading-relaxed">
+                                {parts.map((p, idx) => (typeof p === 'string' ? p.replace(/^[\*\-•]\s/, '') : p))}
+                            </span>
+                        </div>
+                    );
+                }
+
+                if (!line.trim()) return <div key={i} className="h-2"></div>;
+
+                return <div key={i} className="text-slate-800 dark:text-slate-200 leading-relaxed">{parts}</div>;
+            })}
+        </div>
+    );
+};
+
 export const AIChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -32,16 +67,16 @@ export const AIChat: React.FC = () => {
                 systemInstruction: `
                     Você é um assistente especializado APENAS em nutrição, alimentação e composição de alimentos para nutricionistas.
                     
+                    REGRAS DE FORMATAÇÃO (MUITO IMPORTANTE):
+                    1. Use SEMPRE listas com marcadores (• ou -) para organizar opções, ingredientes ou passos.
+                    2. Nunca responda com blocos grandes de texto corrido. Quebre em parágrafos curtos ou listas.
+                    3. Use **negrito** para destacar alimentos, quantidades ou valores calóricos.
+                    4. Seja direto e prático.
+
                     REGRAS RÍGIDAS DE ESCOPO:
-                    1. Responda EXCLUSIVAMENTE sobre: composição de alimentos, substituições alimentares, dúvidas sobre calorias/macros, ideias de refeições saudáveis, e boas práticas básicas de dieta.
+                    1. Responda EXCLUSIVAMENTE sobre: composição de alimentos, substituições alimentares, dúvidas sobre calorias/macros, ideias de refeições saudáveis e boas práticas básicas de dieta.
                     2. RECUSE AUTOMATICAMENTE qualquer pergunta sobre: treinos, exercícios físicos, diagnósticos médicos, tratamento de doenças, medicamentos, suplementação hormonal ou avançada, e assuntos não relacionados a comida.
                     3. Se a pergunta for fora do escopo permitido, responda EXATAMENTE: "Desculpe, este chat responde apenas dúvidas rápidas sobre alimentação, nutrição e substituições alimentares."
-
-                    ESTILO DE RESPOSTA:
-                    - Seja curto, direto e prático.
-                    - Use linguagem técnica simples adequada para nutricionistas.
-                    - Não escreva textos longos, vá direto ao ponto.
-                    - Nunca dê diagnósticos.
                 `,
             }
         });
@@ -105,7 +140,7 @@ export const AIChat: React.FC = () => {
                 </div>
                 <div>
                     <h3 className="font-bold text-slate-800 dark:text-white text-sm">Assistente de Nutrição</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Responde apenas sobre alimentação e substituições.</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Responde em tópicos sobre alimentação.</p>
                 </div>
             </div>
 
@@ -121,11 +156,11 @@ export const AIChat: React.FC = () => {
                             Tire dúvidas rápidas sobre valor nutricional, substituições de alimentos ou ideias para o cardápio.
                         </p>
                         <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
-                            <button onClick={() => setInput("Qual a melhor substituição para pão no café da manhã?")} className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-400 transition-colors text-slate-600 dark:text-slate-400">
-                                "Substituição para pão no café?"
+                            <button onClick={() => setInput("Opções de café da manhã sem glúten")} className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-400 transition-colors text-slate-600 dark:text-slate-400">
+                                "Opções de café da manhã sem glúten"
                             </button>
-                            <button onClick={() => setInput("Quais alimentos são ricos em ferro vegetal?")} className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-400 transition-colors text-slate-600 dark:text-slate-400">
-                                "Alimentos ricos em ferro vegetal?"
+                            <button onClick={() => setInput("Alimentos ricos em ferro vegetal")} className="text-xs bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-400 transition-colors text-slate-600 dark:text-slate-400">
+                                "Alimentos ricos em ferro vegetal"
                             </button>
                         </div>
                     </div>
@@ -133,7 +168,7 @@ export const AIChat: React.FC = () => {
 
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`flex gap-3 max-w-[85%] md:max-w-[70%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={`flex gap-3 max-w-[90%] md:max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                             {/* Avatar */}
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 shadow-sm ${
                                 msg.role === 'user' 
@@ -144,12 +179,12 @@ export const AIChat: React.FC = () => {
                             </div>
 
                             {/* Bubble */}
-                            <div className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                            <div className={`px-5 py-4 rounded-2xl text-sm shadow-sm ${
                                 msg.role === 'user'
                                 ? 'bg-emerald-600 text-white rounded-tr-none'
-                                : 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-tl-none'
+                                : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none'
                             }`}>
-                                {msg.text}
+                                <MessageContent text={msg.text} />
                             </div>
                         </div>
                     </div>

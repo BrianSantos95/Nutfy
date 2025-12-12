@@ -16,16 +16,19 @@ export const SubscriptionPage: React.FC = () => {
     const [isPremium, setIsPremium] = useState(false);
 
     useEffect(() => {
-        const sub = subscriptionService.initializeSubscription();
-        setIsPremium(sub.status === 'premium');
+        const load = async () => {
+            const sub = await subscriptionService.initializeSubscription();
+            setIsPremium(sub.status === 'premium');
+        };
+        load();
     }, []);
 
     const handleSubscribe = () => {
         setIsLoading(true);
         // Simulação de processamento de pagamento
-        setTimeout(() => {
+        setTimeout(async () => {
             if (selectedPlan) {
-                subscriptionService.upgradeSubscription(selectedPlan);
+                await subscriptionService.upgradeSubscription(selectedPlan);
                 setIsLoading(false);
                 alert('Pagamento confirmado! Seu plano Premium está ativo.');
                 navigate('/');

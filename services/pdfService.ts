@@ -1,18 +1,21 @@
 import { jsPDF } from 'jspdf';
-import { Student, Meal, Assessment } from '../types';
-import { storageService } from './storageService';
+import { Student, Meal, Assessment, ProfessionalProfile } from '../types';
 
-// --- CONFIGURAÇÃO DE DESIGN (IDV UI STYLE) ---
-const THEME = {
-  bg: [248, 249, 252],        // #F8F9FC
+// --- PALETA DE CORES (Idêntica ao Tailwind do App) ---
+const COLORS = {
+  bg: [248, 249, 252],        // #F8F9FC (Fundo da página)
   white: [255, 255, 255],     // #FFFFFF
-  primary: [42, 127, 95],     // #2A7F5F
-  textMain: [30, 41, 59],     // #1E293B
-  textSecondary: [71, 85, 105], // #475569
-  textLight: [148, 163, 184], // #94A3B8
-  shadow: [226, 232, 240],    // #E2E8F0
-  divider: [241, 245, 249],   // #F1F5F9
-  freeMealBg: [247, 250, 255] // #F7FAFF
+  slate900: [15, 23, 42],     // Texto Principal
+  slate600: [71, 85, 105],    // Texto Secundário
+  slate400: [148, 163, 184],  // Texto Terciário / Labels
+  slate200: [226, 232, 240],  // Bordas
+  slate100: [241, 245, 249],  // Fundos leves
+  emerald500: [16, 185, 129], // Destaque Principal
+  emerald50: [236, 253, 245], // Fundo Destaque
+  blue500: [59, 130, 246],    // Refeição Livre
+  blue50: [239, 246, 255],    // Fundo Refeição Livre
+  purple500: [139, 92, 246],  // Acentos roxos
+  divider: [241, 245, 249]
 };
 
 // --- HELPER: CALCULAR IDADE ---
@@ -30,433 +33,315 @@ const calculateAge = (birthDate?: string) => {
     return isNaN(age) ? 'N/A' : age.toString();
 };
 
-export const generatePDF = (student: Student, assessment: Assessment, meals: Meal[]): boolean => {
+export const generatePDF = (student: Student, assessment: Assessment, meals: Meal[], profile: ProfessionalProfile | null): boolean => {
   try {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     
-    // Critical safety check: if page dimensions are invalid, abort immediately
-    if (!isFinite(pageWidth) || !isFinite(pageHeight) || pageWidth <= 0 || pageHeight <= 0) {
-        console.error("Invalid page dimensions");
-        return false;
-    }
-
-    const profile = storageService.getProfile();
-    
-    // Configurações de Layout
-    const margin = 20;
+    // Margens e Layout
+    const margin = 14; // Margem lateral menor para aproveitar espaço
     const contentWidth = pageWidth - (margin * 2);
-    let currentY = 20;
+    let currentY = 14;
 
-    // --- SAFETY WRAPPERS ---
-    
-    const safeText = (text: string | string[] | number | undefined | null, x: number, y: number, options?: any) => {
-        if (!isFinite(x) || !isFinite(y)) return;
-        try {
-            if (Array.isArray(text)) {
-                doc.text(text, x, y, options);
-            } else {
-                const str = (text === null || text === undefined) ? '' : String(text);
-                doc.text(str, x, y, options);
-            }
-        } catch (e) { console.warn("safeText failed", e); }
-    };
+    // --- FUNÇÕES AUXILIARES DE DESENHO ---
 
-    const safeRoundedRect = (x: number, y: number, w: number, h: number, rx: number, ry: number, style: string) => {
-         if (!isFinite(x) || !isFinite(y) || !isFinite(w) || !isFinite(h) || !isFinite(rx) || !isFinite(ry)) return;
-         if (w <= 0 || h <= 0) return;
-         try {
-            doc.roundedRect(x, y, w, h, rx, ry, style);
-         } catch (e) { console.warn("safeRoundedRect failed", e); }
-    };
+    const setFill = (c: number[]) => doc.setFillColor(c[0], c[1], c[2]);
+    const setText = (c: number[]) => doc.setTextColor(c[0], c[1], c[2]);
+    const setDraw = (c: number[]) => doc.setDrawColor(c[0], c[1], c[2]);
 
-    const safeRect = (x: number, y: number, w: number, h: number, style: string) => {
-        if (!isFinite(x) || !isFinite(y) || !isFinite(w) || !isFinite(h)) return;
-        if (w <= 0 || h <= 0) return;
-        try {
-            doc.rect(x, y, w, h, style);
-        } catch (e) { console.warn("safeRect failed", e); }
-    };
-
-    const safeCircle = (x: number, y: number, r: number, style: string) => {
-        if (!isFinite(x) || !isFinite(y) || !isFinite(r) || r < 0) return;
-        try {
-            doc.circle(x, y, r, style);
-        } catch (e) { console.warn("safeCircle failed", e); }
-    };
-
-    const safeLine = (x1: number, y1: number, x2: number, y2: number) => {
-        if (!isFinite(x1) || !isFinite(y1) || !isFinite(x2) || !isFinite(y2)) return;
-        try {
-            doc.line(x1, y1, x2, y2);
-        } catch (e) { console.warn("safeLine failed", e); }
-    };
-
-    const safeAddImage = (imageData: string, format: string, x: number, y: number, w: number, h: number) => {
-        if (!isFinite(x) || !isFinite(y) || !isFinite(w) || !isFinite(h)) return;
-        if (w <= 0 || h <= 0) return;
-        try {
-            doc.addImage(imageData, format, x, y, w, h);
-        } catch (e) { console.warn("safeAddImage failed", e); }
-    };
-
-    const safeSetFillColor = (c: number[]) => {
-        if (c && c.length === 3 && isFinite(c[0]) && isFinite(c[1]) && isFinite(c[2])) {
-            doc.setFillColor(c[0], c[1], c[2]);
-        }
-    };
-
-    const safeSetTextColor = (c: number[]) => {
-        if (c && c.length === 3 && isFinite(c[0]) && isFinite(c[1]) && isFinite(c[2])) {
-            doc.setTextColor(c[0], c[1], c[2]);
-        }
-    };
-    
-    const safeSetDrawColor = (r: number, g: number, b: number) => {
-        if (isFinite(r) && isFinite(g) && isFinite(b)) {
-            doc.setDrawColor(r, g, b);
-        }
-    };
-
-    const safeSplitText = (text: string, maxWidth: number): string[] => {
-        if (!text) return [];
-        if (!isFinite(maxWidth) || maxWidth <= 0) return [text];
-        try {
-            return doc.splitTextToSize(text, maxWidth);
-        } catch (e) {
-            return [text]; // Fallback
-        }
-    };
-
-    const addY = (val: number) => {
-        if (isFinite(val)) currentY += val;
-    };
-
-    // --- DRAWING FUNCTIONS ---
-
-    const drawCard = (y: number, height: number, fillColor: number[] = THEME.white, withShadow: boolean = true) => {
-        if (!isFinite(y) || !isFinite(height) || height <= 0) return;
-
-        if (withShadow) {
-            safeSetFillColor(THEME.shadow);
-            safeRoundedRect(margin + 1, y + 2, contentWidth, height, 8, 8, 'F'); 
-        }
-        safeSetFillColor(fillColor);
-        safeSetDrawColor(240, 240, 240);
-        safeRoundedRect(margin, y, contentWidth, height, 6, 6, 'FD'); 
-    };
-
-    let pageNumber = 1;
-    const drawFooter = (pageNum: number) => {
-        const footerY = pageHeight - 15;
-        safeSetDrawColor(THEME.divider[0], THEME.divider[1], THEME.divider[2]);
-        safeLine(margin, footerY - 5, pageWidth - margin, footerY - 5);
+    const drawCard = (x: number, y: number, w: number, h: number, color: number[] = COLORS.white) => {
+        // Sombra suave simulada (apenas uma borda inferior direita mais grossa cinza claro)
+        setFill([235, 238, 245]); // Sombra
+        doc.roundedRect(x + 0.5, y + 0.5, w, h, 3, 3, 'F');
         
+        // Cartão principal
+        setFill(color);
+        setDraw(COLORS.slate200);
+        doc.setLineWidth(0.1);
+        doc.roundedRect(x, y, w, h, 3, 3, 'FD'); // Fill and Draw
+    };
+
+    const drawBadge = (text: string, x: number, y: number, bg: number[], textCol: number[]) => {
         doc.setFontSize(8);
-        doc.setTextColor(154, 154, 154);
-        doc.setFont("helvetica", "normal");
+        doc.setFont("helvetica", "bold");
+        const w = doc.getTextWidth(text) + 6;
+        const h = 6;
         
-        const footerText = profile?.name ? `Plano gerado por ${profile.name}` : 'Nutfy';
-        safeText(footerText, margin, footerY);
-        safeText(`Página ${pageNum}`, pageWidth - margin, footerY, { align: 'right' });
+        setFill(bg);
+        doc.roundedRect(x, y, w, h, 1.5, 1.5, 'F');
+        
+        setText(textCol);
+        doc.text(text, x + 3, y + 4.2);
+        return w; // Retorna largura para posicionamento relativo
     };
 
     const checkPageBreak = (heightNeeded: number) => {
-        const h = isFinite(heightNeeded) ? heightNeeded : 0;
-        if (currentY + h > pageHeight - margin) {
-            drawFooter(pageNumber);
+        if (currentY + heightNeeded > pageHeight - margin) {
+            drawFooter();
             doc.addPage();
-            safeSetFillColor(THEME.bg);
-            safeRect(0, 0, pageWidth, pageHeight, 'F');
-            currentY = 20;
-            pageNumber++;
+            // Redesenha fundo
+            setFill(COLORS.bg);
+            doc.rect(0, 0, pageWidth, pageHeight, 'F');
+            currentY = margin;
             return true;
         }
         return false;
     };
 
-    // --- RENDER EXECUTION ---
-
-    // 1. Background
-    safeSetFillColor(THEME.bg);
-    safeRect(0, 0, pageWidth, pageHeight, 'F');
-
-    // 2. Header
-    const headerHeight = 50;
-    drawCard(currentY, headerHeight);
-
-    // Logo
-    if (profile && profile.logoUrl) {
-        try {
-            const imgProps = doc.getImageProperties(profile.logoUrl);
-            const ratio = (imgProps.height && imgProps.height > 0) ? (imgProps.width / imgProps.height) : 1;
-            const logoH = 24;
-            const logoW = logoH * ratio;
-            
-            if (isFinite(logoW) && isFinite(logoH)) {
-                safeAddImage(profile.logoUrl, 'PNG', margin + 10, currentY + 13, logoW, logoH);
-            } else {
-                throw new Error("Invalid logo dimensions");
-            }
-        } catch (e) { 
-            safeSetFillColor(THEME.primary);
-            safeCircle(margin + 22, currentY + 25, 12, 'F');
-        }
-    } else {
-        safeSetFillColor(THEME.primary);
-        safeCircle(margin + 22, currentY + 25, 12, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        safeText(profile?.name?.[0] || "N", margin + 22, currentY + 30, { align: 'center' });
-    }
-
-    // Professional Info
-    const textX = margin + 50; 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    safeSetTextColor(THEME.textMain);
-    safeText(profile?.name || "Nutricionista", textX, currentY + 20);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    safeSetTextColor(THEME.textSecondary);
-    let subInfoY = currentY + 26;
-    if (profile?.registration) {
-        safeText(profile.registration, textX, subInfoY);
-        subInfoY += 5;
-    }
-    
-    // Document Title
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    safeSetTextColor(THEME.primary);
-    safeText("PLANO ALIMENTAR", pageWidth - margin - 10, currentY + 20, { align: 'right' });
-    
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    safeSetTextColor(THEME.textLight);
-    safeText(`Criado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth - margin - 10, currentY + 26, { align: 'right' });
-
-    addY(headerHeight + 10);
-
-    // 3. Patient Info
-    const patientInfoHeight = 45;
-    drawCard(currentY, patientInfoHeight);
-
-    const labelsY = currentY + 15;
-    const valuesY = currentY + 25;
-    const colWidth = contentWidth / 4;
-
-    const drawPatientMetric = (label: string, value: string, colIndex: number) => {
-        const x = margin + (colWidth * colIndex) + (colWidth / 2);
-        doc.setFont("helvetica", "normal");
+    const drawFooter = () => {
+        const footerY = pageHeight - 8;
         doc.setFontSize(8);
-        safeSetTextColor(THEME.textLight);
-        safeText(label.toUpperCase(), x, labelsY, { align: 'center' });
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12);
-        safeSetTextColor(THEME.textMain);
-        const safeValue = (value === undefined || value === null) ? '-' : String(value);
-        safeText(safeValue, x, valuesY, { align: 'center' });
+        setText(COLORS.slate400);
+        doc.setFont("helvetica", "normal");
+        const text = profile?.name ? `Plano elaborado por ${profile.name}` : 'Nutfy - Planejamento Nutricional';
+        doc.text(text, margin, footerY);
+        doc.text(`Página ${doc.getNumberOfPages()}`, pageWidth - margin, footerY, { align: 'right' });
     };
 
-    drawPatientMetric("Paciente", student.name.split(' ')[0], 0);
-    drawPatientMetric("Idade", `${calculateAge(student.birthDate)} anos`, 1);
-    drawPatientMetric("Peso Atual", `${assessment.weight} kg`, 2);
-    drawPatientMetric("Objetivo", student.anamnesis?.objective || assessment.objective || "Saúde", 3);
+    // --- INÍCIO DA RENDERIZAÇÃO ---
 
-    addY(patientInfoHeight + 10);
+    // 1. Fundo da Página (Cinza muito claro #F8F9FC)
+    setFill(COLORS.bg);
+    doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-    // 4. Nutritional Summary
-    const totalCalories = meals
-        .filter(m => m.type === 'normal')
-        .reduce((acc, curr) => acc + (Number(curr.calories) || 0), 0);
-    const calorieGoal = Number(assessment.calorieGoal) || 0;
+    // 2. Cabeçalho (Card Branco)
+    const headerH = 40;
+    drawCard(margin, currentY, contentWidth, headerH);
 
-    const summaryHeight = 40;
-    drawCard(currentY, summaryHeight);
-    
-    safeSetDrawColor(THEME.divider[0], THEME.divider[1], THEME.divider[2]);
-    safeLine(pageWidth / 2, currentY + 5, pageWidth / 2, currentY + summaryHeight - 5);
+    // Logo (Círculo ou Imagem)
+    if (profile && profile.logoUrl) {
+        try {
+            // Logo reduzida para 20x20 e centralizada verticalmente no header (y+10)
+            doc.addImage(profile.logoUrl, 'PNG', margin + 5, currentY + 10, 20, 20);
+        } catch (e) {
+            // Fallback se imagem falhar (Círculo menor)
+            setFill(COLORS.slate100);
+            doc.circle(margin + 15, currentY + 20, 10, 'F');
+        }
+    } else {
+        // Fallback sem logo (Círculo menor)
+        setFill(COLORS.emerald500);
+        doc.circle(margin + 15, currentY + 20, 10, 'F');
+        setText(COLORS.white);
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text(profile?.name?.[0] || "N", margin + 15, currentY + 24, { align: 'center' });
+    }
 
-    // Goal
+    // Texto do Profissional
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    setText(COLORS.slate900);
+    // Ajustado X para +35 já que a logo é menor
+    doc.text(profile?.name || "Nutricionista", margin + 35, currentY + 15);
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    safeSetTextColor(THEME.textSecondary);
-    safeText("Meta Diária Calculada", margin + 20, currentY + 15);
-    
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    safeSetTextColor(THEME.primary);
-    safeText(`${calorieGoal} kcal`, margin + 20, currentY + 28);
+    setText(COLORS.slate600);
+    let subY = currentY + 20;
+    if (profile?.title) {
+        doc.text(profile.title, margin + 35, subY);
+        subY += 4;
+    }
+    if (profile?.registration) {
+        doc.text(profile.registration, margin + 35, subY);
+    }
 
-    // Planned
+    // Título do Documento (Direita)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    setText(COLORS.slate600); // Alterado para cor neutra escura
+    doc.text("PLANO ALIMENTAR PERSONALIZADO", pageWidth - margin - 5, currentY + 15, { align: 'right' });
+    
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    safeSetTextColor(THEME.textSecondary);
-    safeText("Total Planejado", (pageWidth / 2) + 20, currentY + 15);
-    
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    const diff = totalCalories - calorieGoal;
-    if (diff > 200) doc.setTextColor(239, 68, 68);
-    else if (diff < -200) doc.setTextColor(245, 158, 11);
-    else safeSetTextColor(THEME.textMain);
-    
-    safeText(`${totalCalories} kcal`, (pageWidth / 2) + 20, currentY + 28);
+    doc.setFontSize(8);
+    setText(COLORS.slate400);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth - margin - 5, currentY + 21, { align: 'right' });
 
-    addY(summaryHeight + 15);
+    currentY += headerH + 6;
 
-    // 5. Meals
+    // 3. Resumo do Paciente e Metas (Card Branco)
+    const patientH = 35;
+    drawCard(margin, currentY, contentWidth, patientH);
+
+    const colW = contentWidth / 4;
+    const labelsY = currentY + 10;
+    const valuesY = currentY + 22;
+
+    const drawStat = (label: string, value: string, col: number) => {
+        const x = margin + (col * colW) + (colW / 2);
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        setText(COLORS.slate400);
+        doc.text(label.toUpperCase(), x, labelsY, { align: 'center' });
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        setText(COLORS.slate900);
+        doc.text(value, x, valuesY, { align: 'center' });
+    };
+
+    drawStat("Paciente", student.name.split(' ')[0], 0);
+    drawStat("Peso Atual", `${assessment.weight} kg`, 1);
+    drawStat("Meta Diária", `${assessment.calorieGoal} kcal`, 2);
+    
+    // Objetivo (pode ser longo, truncar se precisar)
+    const obj = student.anamnesis?.objective || assessment.objective || "Saúde";
+    drawStat("Objetivo", obj.length > 15 ? obj.substring(0, 15) + '...' : obj, 3);
+    
+    // Divisores Verticais
+    setDraw(COLORS.slate100);
+    doc.setLineWidth(0.2);
+    doc.line(margin + colW, currentY + 8, margin + colW, currentY + patientH - 8);
+    doc.line(margin + (colW*2), currentY + 8, margin + (colW*2), currentY + patientH - 8);
+    doc.line(margin + (colW*3), currentY + 8, margin + (colW*3), currentY + patientH - 8);
+
+    currentY += patientH + 10;
+
+    // 4. Lista de Refeições
+    // Título da Seção
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    safeSetTextColor(THEME.textMain);
-    safeText("ROTEIRO ALIMENTAR", margin + 2, currentY);
-    addY(8);
+    setText(COLORS.slate900);
+    doc.text("Roteiro Diário", margin + 2, currentY);
+    currentY += 6;
 
-    meals.forEach((meal) => {
-        let foodsHeight = 0;
-        let foodLines: any[] = []; 
-
+    meals.forEach((meal, index) => {
+        // Calcular altura necessária
+        let contentH = 0;
+        const foodLines: any[] = [];
+        
+        // Processar alimentos para saber altura
         if (meal.foods && meal.foods.length > 0) {
             meal.foods.forEach(f => {
                 const line1 = `${f.quantity} ${f.name}`;
-                const line2 = f.substitutions ? `Substituição: ${f.substitutions}` : '';
-                foodLines.push({ l1: line1, l2: line2, cal: f.calories });
-                foodsHeight += line2 ? 14 : 10; 
-                foodsHeight += 4; 
+                // Quebra texto se muito longo
+                const splitL1 = doc.splitTextToSize(line1, contentWidth - 40);
+                
+                const line2 = f.substitutions ? `Opção: ${f.substitutions}` : '';
+                const splitL2 = line2 ? doc.splitTextToSize(line2, contentWidth - 40) : [];
+                
+                foodLines.push({ l1: splitL1, l2: splitL2, cal: f.calories });
+                
+                contentH += (splitL1.length * 5) + 2; // Altura linha 1
+                if (splitL2.length > 0) contentH += (splitL2.length * 4) + 2; // Altura linha 2
+                contentH += 3; // Espaçamento entre itens
             });
         } else {
-             const descLines = safeSplitText(meal.description || '', contentWidth - 40);
-             foodsHeight = (descLines.length * 5) + 10;
-        }
-        
-        let descExtraHeight = 0;
-        let descExtraLines: string[] = [];
-        if (meal.description && meal.foods && meal.foods.length > 0) {
-            descExtraLines = safeSplitText(`Obs: ${meal.description}`, contentWidth - 40);
-            descExtraHeight = (descExtraLines.length * 5) + 10;
+             // Descrição livre
+             const desc = meal.description || "Sem descrição.";
+             const splitDesc = doc.splitTextToSize(desc, contentWidth - 20);
+             foodLines.push({ l1: splitDesc, isDesc: true });
+             contentH += (splitDesc.length * 5) + 5;
         }
 
-        const cardHeaderHeight = 25; 
-        const cardTotalHeight = cardHeaderHeight + foodsHeight + descExtraHeight + 10;
+        const cardHeaderH = 14;
+        const cardPadding = 10;
+        const totalCardH = cardHeaderH + contentH + cardPadding + 5; // +5 folga
 
-        checkPageBreak(cardTotalHeight + 10);
+        checkPageBreak(totalCardH + 5);
 
         const isFree = meal.type === 'free';
-        drawCard(currentY, cardTotalHeight, isFree ? THEME.freeMealBg : THEME.white);
-
-        safeSetFillColor(isFree ? [219, 234, 254] : [236, 253, 245]); 
-        safeRoundedRect(margin + 10, currentY + 8, 30, 8, 2, 2, 'F'); 
         
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "bold");
-        if (isFree) doc.setTextColor(37, 99, 235);
-        else doc.setTextColor(5, 150, 105);
+        // Desenha Cartão da Refeição
+        // Se for livre, fundo azul bem claro, senão branco
+        drawCard(margin, currentY, contentWidth, totalCardH, isFree ? COLORS.blue50 : COLORS.white);
+
+        // Header do Cartão
+        const headerY = currentY + 9;
         
-        safeText(meal.time || '--:--', margin + 25, currentY + 13.5, { align: 'center' });
+        // Badge de Horário
+        const timeW = drawBadge(meal.time, margin + 5, currentY + 4, isFree ? COLORS.white : COLORS.slate100, COLORS.slate600);
 
-        doc.setFontSize(13);
+        // Nome da Refeição
         doc.setFont("helvetica", "bold");
-        safeSetTextColor(THEME.textMain);
-        safeText(meal.name + (isFree ? " (Livre)" : ""), margin + 45, currentY + 14);
+        doc.setFontSize(11);
+        setText(COLORS.slate900);
+        doc.text(meal.name + (isFree ? " (Livre)" : ""), margin + 5 + timeW + 4, headerY);
 
+        // Total Calorias (Direita)
         if (!isFree) {
-            doc.setFontSize(10);
-            safeSetTextColor(THEME.textLight);
-            safeText(`${meal.calories} kcal`, pageWidth - margin - 15, currentY + 14, { align: 'right' });
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            setText(COLORS.emerald500);
+            doc.text(`${meal.calories} kcal`, pageWidth - margin - 8, headerY, { align: 'right' });
         }
 
-        safeSetDrawColor(THEME.divider[0], THEME.divider[1], THEME.divider[2]);
-        safeLine(margin + 10, currentY + 22, pageWidth - margin - 10, currentY + 22);
+        // Linha Divisória Fina
+        setDraw(isFree ? [219, 234, 254] : COLORS.slate100);
+        doc.setLineWidth(0.1);
+        doc.line(margin + 5, currentY + 13, pageWidth - margin - 5, currentY + 13);
 
-        let itemY = currentY + 32;
+        // Renderizar Alimentos
+        let itemY = currentY + 20;
 
-        if (meal.foods && meal.foods.length > 0) {
-            foodLines.forEach((item, idx) => {
-                safeSetFillColor(THEME.primary);
-                safeCircle(margin + 15, itemY - 1, 1.5, 'F');
+        foodLines.forEach((item) => {
+            if (item.isDesc) {
+                // Descrição texto corrido
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                setText(COLORS.slate600);
+                doc.text(item.l1, margin + 8, itemY);
+                itemY += (item.l1.length * 5);
+            } else {
+                // Bullet point customizado
+                setFill(COLORS.emerald500);
+                doc.circle(margin + 8, itemY - 1.5, 1, 'F');
 
+                // Nome Alimento + Qtd
                 doc.setFont("helvetica", "bold");
-                doc.setFontSize(10);
-                safeSetTextColor(THEME.textMain);
-                safeText(String(item.l1), margin + 22, itemY);
-
-                if (!isFree && Number(item.cal) > 0) {
-                     doc.setFont("helvetica", "normal");
-                     doc.setFontSize(8);
-                     safeSetTextColor(THEME.textLight);
-                     safeText(`~${item.cal} kcal`, pageWidth - margin - 15, itemY, { align: 'right' });
-                }
-
-                if (item.l2) {
-                    itemY += 5;
-                    doc.setFont("helvetica", "italic");
-                    doc.setFontSize(9);
-                    safeSetTextColor(THEME.textSecondary);
-                    safeText(String(item.l2), margin + 22, itemY);
-                    itemY += 4; 
-                } else {
-                    itemY += 4; 
-                }
+                doc.setFontSize(9);
+                setText(COLORS.slate900);
+                doc.text(item.l1, margin + 12, itemY);
                 
-                if (idx < foodLines.length - 1) {
-                    itemY += 4;
-                    safeSetDrawColor(248, 250, 252);
-                    safeLine(margin + 22, itemY - 4, pageWidth - margin - 22, itemY - 4);
+                const h1 = item.l1.length * 5;
+                
+                // Opção / Substituição
+                if (item.l2 && item.l2.length > 0) {
+                    const subY = itemY + h1 - 1; // Pequeno ajuste
+                    doc.setFont("helvetica", "italic"); // Italic para substituição
+                    doc.setFontSize(8);
+                    setText(COLORS.slate600);
+                    // Icone visual "flecha" ou texto
+                    doc.text(item.l2, margin + 12, subY);
+                    itemY += h1 + (item.l2.length * 4) + 2; 
                 } else {
-                    itemY += 4;
+                    itemY += h1 + 2;
                 }
-            });
-        } else {
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            safeSetTextColor(THEME.textSecondary);
-            const lines = safeSplitText(meal.description || "Nenhuma informação adicional.", contentWidth - 40);
-            safeText(lines, margin + 15, itemY);
-        }
+            }
+        });
 
-        if (descExtraLines.length > 0) {
-             const noteHeight = (descExtraLines.length * 5) + 6;
-             safeSetFillColor([248, 250, 252]);
-             safeRoundedRect(margin + 10, currentY + cardTotalHeight - noteHeight - 5, contentWidth - 20, noteHeight, 4, 4, 'F'); 
-             
-             doc.setFont("helvetica", "normal");
-             doc.setFontSize(8);
-             safeSetTextColor(THEME.textSecondary);
-             safeText(descExtraLines, margin + 15, currentY + cardTotalHeight - noteHeight);
-        }
-
-        addY(cardTotalHeight + 10);
+        currentY += totalCardH + 4; // Margem para o próximo cartão
     });
 
-    // 6. Notes
-    if (student.anamnesis?.generalNotes || assessment.notes) {
-        const notes = student.anamnesis?.generalNotes || assessment.notes || "";
-        if (notes) {
-            const noteLines = safeSplitText(notes, contentWidth - 30);
-            const notesHeight = (noteLines.length * 6) + 30;
-            
-            checkPageBreak(notesHeight);
-            drawCard(currentY, notesHeight);
+    // 5. Observações Finais (Se houver)
+    const notes = student.anamnesis?.generalNotes || assessment.notes || "";
+    if (notes) {
+        const noteTitleH = 10;
+        const splitNotes = doc.splitTextToSize(notes, contentWidth - 20);
+        const noteContentH = splitNotes.length * 5;
+        const totalNoteH = noteTitleH + noteContentH + 15;
 
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
-            safeSetTextColor(THEME.textMain);
-            safeText("OBSERVAÇÕES DO NUTRICIONISTA", margin + 15, currentY + 15);
-
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            safeSetTextColor(THEME.textSecondary);
-            safeText(noteLines, margin + 15, currentY + 25);
-        }
+        checkPageBreak(totalNoteH);
+        
+        drawCard(margin, currentY, contentWidth, totalNoteH, COLORS.white);
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        setText(COLORS.slate900);
+        doc.text("Observações Gerais", margin + 8, currentY + 10);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        setText(COLORS.slate600);
+        doc.text(splitNotes, margin + 8, currentY + 18);
     }
 
-    drawFooter(pageNumber);
+    drawFooter();
 
+    // Salvar
     const dateStr = new Date(assessment.date).toISOString().split('T')[0];
     const safeName = student.name.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
     doc.save(`Plano-${safeName}-${dateStr}.pdf`);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Trash2, Edit2, ChevronRight, Sun, Moon, Sunrise, Users, Activity, PauseCircle, CheckCircle2, XCircle, AlertTriangle, X } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, ChevronRight, Sun, Moon, Sunrise, Users, Activity, PauseCircle, CheckCircle2, XCircle, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { Student, ProfessionalProfile } from '../types';
 import { storageService } from '../services/storageService';
@@ -11,14 +11,30 @@ export const Dashboard: React.FC = () => {
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [loadingData, setLoadingData] = useState(true);
   
   // Estados para Modal de Exclusão
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    setStudents(storageService.getStudents());
-    setProfile(storageService.getProfile());
+    // Carregar dados de forma assíncrona
+    const loadData = async () => {
+        try {
+            const [loadedStudents, loadedProfile] = await Promise.all([
+                storageService.getStudents(),
+                storageService.getProfile()
+            ]);
+            setStudents(loadedStudents);
+            setProfile(loadedProfile);
+        } catch (error) {
+            console.error("Erro ao carregar dashboard:", error);
+        } finally {
+            setLoadingData(false);
+        }
+    };
+    loadData();
   }, []);
 
   const requestDelete = (e: React.MouseEvent, id: string) => {
@@ -28,22 +44,30 @@ export const Dashboard: React.FC = () => {
     setDeleteConfirmation('');
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (studentToDelete && deleteConfirmation.toLowerCase() === 'excluir') {
-      const newStudents = students.filter(s => s.id !== studentToDelete);
-      storageService.saveStudents(newStudents);
-      setStudents(newStudents);
-      setStudentToDelete(null);
+        setIsDeleting(true);
+        try {
+            await storageService.deleteStudent(studentToDelete);
+            
+            // Atualiza UI
+            const newStudents = students.filter(s => s.id !== studentToDelete);
+            setStudents(newStudents);
+            setStudentToDelete(null);
+        } catch (e: any) {
+            alert("Erro ao excluir: " + e.message);
+        } finally {
+            setIsDeleting(false);
+        }
     }
   };
 
   const getGreeting = () => {
       const hour = new Date().getHours();
-      // Configuração atualizada: Fundo branco, cores apenas nos detalhes (blobs) e texto
       if (hour < 12) return { 
           label: 'Bom dia', 
           icon: Sunrise, 
-          blobColor: 'bg-orange-100 dark:bg-orange-900/20', // Cor sutil para o blob
+          blobColor: 'bg-orange-100 dark:bg-orange-900/20', 
           textGradient: 'from-orange-500 to-amber-500' 
       };
       if (hour < 18) return { 
@@ -52,7 +76,6 @@ export const Dashboard: React.FC = () => {
           blobColor: 'bg-blue-100 dark:bg-blue-900/20', 
           textGradient: 'from-blue-500 to-indigo-500' 
       };
-      // ALTERADO: De Roxo (Violet) para Verde (Emerald) para combinar com a marca
       return { 
           label: 'Boa noite', 
           icon: Moon, 
@@ -63,7 +86,7 @@ export const Dashboard: React.FC = () => {
 
   const getDaysRemaining = (endDateStr?: string) => {
     if (!endDateStr) return null;
-    const end = new Date(endDateStr);
+    const end = new Date(endDateStr + 'T12:00:00'); // Fix Timezone issue
     const now = new Date();
     end.setHours(0,0,0,0);
     now.setHours(0,0,0,0);
@@ -95,6 +118,16 @@ export const Dashboard: React.FC = () => {
 
   const greetingData = getGreeting();
   const professionalName = profile?.name ? profile.name.split(' ')[0] : 'Nutri';
+
+  if (loadingData) {
+      return (
+          <Layout>
+              <div className="flex h-screen items-center justify-center">
+                  <Loader2 className="animate-spin text-emerald-500 w-10 h-10" />
+              </div>
+          </Layout>
+      );
+  }
 
   return (
     <Layout>
@@ -194,7 +227,6 @@ export const Dashboard: React.FC = () => {
              </div>
 
              <div className="relative group w-full md:w-72">
-                 {/* ALTERADO: Hovers de Violet para Emerald */}
                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-5 h-5 group-focus-within:text-emerald-500 transition-colors" />
                  <input 
                     type="text" 
@@ -227,7 +259,6 @@ export const Dashboard: React.FC = () => {
                <div 
                  key={student.id} 
                  onClick={() => navigate(`/student/${student.id}/progress`)} 
-                 // ALTERADO: Hover de Violet para Emerald
                  className="group bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 hover:border-emerald-100 dark:hover:border-emerald-900 hover:-translate-y-1 transition-all cursor-pointer flex flex-col md:flex-row items-center gap-6 relative overflow-hidden"
                >
                   <div className={`absolute left-0 top-0 bottom-0 w-2 ${isActive ? 'bg-emerald-400' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
@@ -241,7 +272,6 @@ export const Dashboard: React.FC = () => {
                          )}
                       </div>
                       <div>
-                         {/* ALTERADO: Hover de Violet para Emerald */}
                          <h3 className="font-bold text-lg text-slate-800 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">{student.name}</h3>
                          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider mt-1 ${isActive ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400'}`}>
                             {isActive ? 'Plano Ativo' : 'Plano Vencido / Inativo'}
@@ -254,13 +284,12 @@ export const Dashboard: React.FC = () => {
                          <div className="text-right hidden sm:block">
                             <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-0.5">Vencimento</p>
                             <p className={`font-bold px-3 py-1 rounded-lg border ${isActive ? 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300' : 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400'}`}>
-                                {new Date(student.planEndDate!).toLocaleDateString('pt-BR')}
+                                {new Date(student.planEndDate! + 'T12:00:00').toLocaleDateString('pt-BR')}
                             </p>
                          </div>
                       )}
 
                       <div className="flex items-center gap-3">
-                        {/* ALTERADO: Hovers de botões de Violet para Emerald */}
                         <button onClick={(e) => { e.stopPropagation(); navigate(`/student/${student.id}/edit`); }} className="p-3 rounded-2xl text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors" title="Editar">
                             <Edit2 size={20} />
                         </button>
@@ -321,14 +350,14 @@ export const Dashboard: React.FC = () => {
                           </button>
                           <button 
                               onClick={confirmDelete}
-                              disabled={deleteConfirmation.toLowerCase() !== 'excluir'}
+                              disabled={deleteConfirmation.toLowerCase() !== 'excluir' || isDeleting}
                               className={`flex-1 font-bold py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${
                                   deleteConfirmation.toLowerCase() === 'excluir' 
                                   ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-200 dark:shadow-none cursor-pointer active:scale-95' 
                                   : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
                               }`}
                           >
-                              Excluir
+                              {isDeleting ? <Loader2 className="animate-spin" /> : 'Excluir'}
                           </button>
                       </div>
                   </div>

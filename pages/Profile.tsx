@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
-import { User, Award, Hash, Save, Upload } from 'lucide-react';
+import { User, Award, Hash, Save, Upload, Loader2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { ProfessionalProfile } from '../types';
 
@@ -11,37 +11,62 @@ export const Profile: React.FC = () => {
     registration: '',
     logoUrl: ''
   });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
-    const savedProfile = storageService.getProfile();
-    if (savedProfile) {
-      setProfile(savedProfile);
-    }
+    storageService.getProfile().then(savedProfile => {
+      if (savedProfile) {
+        setProfile(savedProfile);
+      }
+      setLoading(false);
+    });
   }, []);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        const base64 = await storageService.fileToBase64(file);
-        setProfile(prev => ({ ...prev, logoUrl: base64 }));
+        setSaving(true);
+        const url = await storageService.fileToBase64(file);
+        setProfile(prev => ({ ...prev, logoUrl: url }));
       } catch (err) {
         alert('Erro ao carregar imagem');
+      } finally {
+        setSaving(false);
       }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile.name.trim()) {
       alert('O Nome Profissional é obrigatório para gerar os planos.');
       return;
     }
-    storageService.saveProfile(profile);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    
+    setSaving(true);
+    try {
+        await storageService.saveProfile(profile);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+    } catch (e) {
+        alert("Erro ao salvar perfil.");
+    } finally {
+        setSaving(false);
+    }
   };
+
+  if (loading) {
+      return (
+          <Layout title="Perfil">
+             <div className="flex h-[50vh] items-center justify-center">
+                 <Loader2 className="animate-spin text-emerald-600 w-10 h-10" />
+             </div>
+          </Layout>
+      );
+  }
 
   return (
     <Layout title="Perfil Profissional" showBack>
@@ -68,6 +93,7 @@ export const Profile: React.FC = () => {
                     accept="image/*" 
                     onChange={handleLogoUpload}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    disabled={saving}
                   />
                   <div className={`w-full h-full rounded-full border-2 border-dashed flex items-center justify-center overflow-hidden transition-all bg-white ${profile.logoUrl ? 'border-emerald-500' : 'border-slate-300 hover:border-emerald-400'}`}>
                     {profile.logoUrl ? (
@@ -152,9 +178,10 @@ export const Profile: React.FC = () => {
               )}
               <button
                 type="submit"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg shadow-emerald-200 transition-all active:scale-95 flex items-center gap-2"
+                disabled={saving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg font-bold shadow-lg shadow-emerald-200 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
               >
-                <Save size={20} />
+                {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
                 Salvar Informações
               </button>
             </div>

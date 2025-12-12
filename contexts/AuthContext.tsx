@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '../services/supabase';
+import { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   loading: boolean;
-  signIn: (email: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -13,56 +14,68 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check local storage for mock session
-    const stored = localStorage.getItem('nutfy_auth_user');
-    if (stored) {
+    // Verificar sessão ativa ao iniciar
+    const checkSession = async () => {
         try {
-            const userData = JSON.parse(stored);
-            setUser(userData);
-            setSession({ user: userData } as Session);
-        } catch (e) {
-            console.error("Erro ao restaurar sessão local", e);
+            const { data: { session } } = await supabase.auth.getSession();
+            setUser(session?.user ?? null);
+        } catch (error) {
+            console.error('Erro ao verificar sessão:', error);
+        } finally {
+            setLoading(false);
         }
-    }
-    setLoading(false);
+    };
+    
+    checkSession();
+
+    // Ouvir mudanças de estado na autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const signIn = async (email: string) => {
-    const mockUser = {
-        id: 'local-user-id', // ID fixo para facilitar testes locais ou gerar uuid
-        email: email,
-        aud: 'authenticated',
-        role: 'authenticated',
-        created_at: new Date().toISOString(),
-        app_metadata: {},
-        user_metadata: {},
-        identities: [],
-        phone: '',
-        confirmed_at: new Date().toISOString(),
-        last_sign_in_at: new Date().toISOString(),
-        factors: []
-    } as unknown as User;
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw new Error(translateSupabaseError(error.message));
+  };
 
-    localStorage.setItem('nutfy_auth_user', JSON.stringify(mockUser));
-    setUser(mockUser);
-    setSession({ user: mockUser } as Session);
+  const signUp = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    if (error) throw new Error(translateSupabaseError(error.message));
   };
 
   const signOut = async () => {
-    localStorage.removeItem('nutfy_auth_user');
-    setUser(null);
-    setSession(null);
+    const { error } = await supabase.auth.signOut();
+    if (error) throw new Error(error.message);
+  };
+
+  // Helper simples para traduzir erros comuns
+  const translateSupabaseError = (msg: string) => {
+      if (msg.includes('Invalid login credentials')) return 'Email ou senha incorretos.';
+      if (msg.includes('User already registered')) return 'Este email já está cadastrado.';
+      if (msg.includes('password should be at least')) return 'A senha deve ter no mínimo 6 caracteres.';
+      return msg;
   };
 
   const value = {
     user,
-    session,
     loading,
     signIn,
+    signUp,
     signOut
   };
 

@@ -5,7 +5,8 @@ import { Leaf, Mail, Lock, Loader2, CheckCircle } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signUp } = useAuth();
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,18 +29,22 @@ export const Register: React.FC = () => {
 
     setLoading(true);
 
-    // Simulação de registro local
-    setTimeout(async () => {
-        await signIn(email);
-        alert('Conta local criada com sucesso!');
-        navigate('/');
-    }, 800);
+    try {
+        await signUp(email, password);
+        
+        alert('Conta criada com sucesso! Você já pode entrar.');
+        navigate('/'); // O Supabase pode fazer login automático dependendo da config, ou pedir confirmação de email.
+    } catch (err: any) {
+        setError(err.message || 'Erro ao criar conta.');
+    } finally {
+        setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex bg-white dark:bg-slate-950">
       
-      {/* Left Side - Image/Brand */}
+      {/* Left Side */}
       <div className="hidden lg:flex lg:w-1/2 bg-emerald-900 relative overflow-hidden items-center justify-center">
          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=2053&auto=format&fit=crop')] bg-cover bg-center opacity-40 mix-blend-overlay"></div>
          
@@ -51,9 +56,9 @@ export const Register: React.FC = () => {
                Comece a organizar seus atendimentos hoje.
             </h1>
             <ul className="space-y-4 text-emerald-100">
-               <li className="flex items-center gap-3"><CheckCircle className="text-emerald-400" size={20} /> Planos ilimitados</li>
-               <li className="flex items-center gap-3"><CheckCircle className="text-emerald-400" size={20} /> Geração de PDFs profissionais</li>
-               <li className="flex items-center gap-3"><CheckCircle className="text-emerald-400" size={20} /> Chat com IA Integrado</li>
+               <li className="flex items-center gap-3"><CheckCircle className="text-emerald-400" size={20} /> Banco de dados seguro</li>
+               <li className="flex items-center gap-3"><CheckCircle className="text-emerald-400" size={20} /> Sincronização em nuvem</li>
+               <li className="flex items-center gap-3"><CheckCircle className="text-emerald-400" size={20} /> Acesso de qualquer lugar</li>
             </ul>
          </div>
       </div>
@@ -123,7 +128,7 @@ export const Register: React.FC = () => {
                  disabled={loading}
                  className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 py-4 rounded-2xl font-bold text-lg shadow-lg shadow-slate-200 dark:shadow-slate-900/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                >
-                  {loading ? <Loader2 className="animate-spin" /> : 'Criar Conta Local'}
+                  {loading ? <Loader2 className="animate-spin" /> : 'Criar Conta'}
                </button>
             </form>
 

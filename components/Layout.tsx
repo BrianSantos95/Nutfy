@@ -54,6 +54,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack = fals
 
            {/* Navigation */}
            <nav className="space-y-3 relative z-10 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              
+              {/* 1. Início */}
               <button 
                 onClick={() => navigate('/')}
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-[1.2rem] transition-all duration-300 font-bold text-sm group ${
@@ -63,21 +65,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack = fals
                 }`}
               >
                 <Home size={22} className={isActive('/') ? 'text-emerald-400 dark:text-emerald-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'} />
-                Dashboard
+                Início
               </button>
 
-              <button 
-                onClick={() => navigate('/chat')}
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-[1.2rem] transition-all duration-300 font-bold text-sm group ${
-                  isActive('/chat') 
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg shadow-slate-300 dark:shadow-slate-800 translate-x-1' 
-                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <MessageCircleQuestion size={22} className={isActive('/chat') ? 'text-pink-400 dark:text-pink-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'} />
-                Chat IA
-              </button>
-
+              {/* 2. Relatório Mensal */}
               <button 
                 onClick={() => navigate('/reports')}
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-[1.2rem] transition-all duration-300 font-bold text-sm group ${
@@ -90,6 +81,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack = fals
                 Relatório Mensal
               </button>
 
+              {/* 3. Chat IA */}
+              <button 
+                onClick={() => navigate('/chat')}
+                className={`w-full flex items-center gap-4 px-5 py-4 rounded-[1.2rem] transition-all duration-300 font-bold text-sm group ${
+                  isActive('/chat') 
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg shadow-slate-300 dark:shadow-slate-800 translate-x-1' 
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <MessageCircleQuestion size={22} className={isActive('/chat') ? 'text-pink-400 dark:text-pink-600' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'} />
+                Chat IA
+              </button>
+
+              {/* 4. Perfil Profissional */}
               <button 
                 onClick={() => navigate('/profile')}
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-[1.2rem] transition-all duration-300 font-bold text-sm group ${
@@ -102,6 +107,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack = fals
                 Perfil Profissional
               </button>
 
+              {/* 5. Assinatura */}
                <button 
                 onClick={() => navigate('/subscription')}
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-[1.2rem] transition-all duration-300 font-bold text-sm group ${
@@ -114,7 +120,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack = fals
                 Assinatura
               </button>
 
-              {/* Theme Toggle Button in Navbar */}
+              {/* 6. Modo Escuro (Toggle) */}
               <button 
                 onClick={toggleTheme}
                 className="w-full flex items-center gap-4 px-5 py-4 rounded-[1.2rem] transition-all duration-300 font-bold text-sm group text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
@@ -227,6 +233,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack = fals
         {/* --- MOBILE BOTTOM NAVIGATION (MINI MENU) --- */}
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-2 py-2 z-50 flex items-center justify-around shadow-[0_-4px_10px_rgba(0,0,0,0.03)] pb-safe transition-colors duration-300">
             
+            {/* 1. Início */}
             <button 
               onClick={() => navigate('/')} 
               className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
@@ -239,18 +246,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack = fals
                 <span className="text-[10px] font-bold">Início</span>
             </button>
 
-            <button 
-              onClick={() => navigate('/chat')} 
-              className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
-                isActive('/chat') ? 'text-pink-600 dark:text-pink-400' : 'text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400'
-              }`}
-            >
-                <div className={`${isActive('/chat') ? 'bg-pink-50 dark:bg-pink-900/30' : 'bg-transparent'} p-1.5 rounded-lg transition-colors`}>
-                  <MessageCircleQuestion size={22} strokeWidth={isActive('/chat') ? 2.5 : 2} />
-                </div>
-                <span className="text-[10px] font-bold">Chat IA</span>
-            </button>
-
+            {/* 2. Relatório */}
             <button 
               onClick={() => navigate('/reports')} 
               className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
@@ -262,7 +258,21 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack = fals
                 </div>
                 <span className="text-[10px] font-bold">Relatório</span>
             </button>
+
+            {/* 3. Chat IA */}
+            <button 
+              onClick={() => navigate('/chat')} 
+              className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+                isActive('/chat') ? 'text-pink-600 dark:text-pink-400' : 'text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400'
+              }`}
+            >
+                <div className={`${isActive('/chat') ? 'bg-pink-50 dark:bg-pink-900/30' : 'bg-transparent'} p-1.5 rounded-lg transition-colors`}>
+                  <MessageCircleQuestion size={22} strokeWidth={isActive('/chat') ? 2.5 : 2} />
+                </div>
+                <span className="text-[10px] font-bold">Chat IA</span>
+            </button>
             
+            {/* 4. Perfil */}
             <button 
               onClick={() => navigate('/profile')} 
               className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
@@ -275,6 +285,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, showBack = fals
                 <span className="text-[10px] font-bold">Perfil</span>
             </button>
 
+            {/* 5. Planos (Assinatura) */}
             <button 
               onClick={() => navigate('/subscription')} 
               className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${

@@ -20,20 +20,38 @@ export const AssessmentForm: React.FC = () => {
         date: new Date().toISOString().split('T')[0]
     });
 
+    const [isOtherObjective, setIsOtherObjective] = useState(false);
+    
+    const standardObjectives = [
+        "Emagrecimento",
+        "Hipertrofia",
+        "Reeducação Alimentar",
+        "Saúde Geral",
+        "Ganho de Energia"
+    ];
+
     useEffect(() => {
-        if (isEditing && assessmentId) {
-            const all = storageService.getAssessments(studentId);
-            const found = all.find(a => a.id === assessmentId);
-            if (found) {
-                setFormData({
-                    ...found,
-                    date: new Date(found.date).toISOString().split('T')[0] // Formata para input date
-                });
+        const load = async () => {
+            if (isEditing && assessmentId) {
+                const all = await storageService.getAssessments(studentId);
+                const found = all.find(a => a.id === assessmentId);
+                if (found) {
+                    setFormData({
+                        ...found,
+                        date: new Date(found.date).toISOString().split('T')[0] // Formata para input date
+                    });
+                    
+                    // Verifica se o objetivo é padrão ou personalizado
+                    if (found.objective && !standardObjectives.includes(found.objective)) {
+                        setIsOtherObjective(true);
+                    }
+                }
             }
-        }
+        };
+        load();
     }, [assessmentId, studentId, isEditing]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
         if (!formData.weight || !formData.height || !formData.calorieGoal) {
@@ -54,7 +72,7 @@ export const AssessmentForm: React.FC = () => {
             status: 'active' // A nova avaliação se torna a ativa
         };
 
-        storageService.saveAssessment(payload);
+        await storageService.saveAssessment(payload);
         
         // Se for nova avaliação, redireciona para criar o plano (Refeições)
         // Se for edição, volta para o dashboard do aluno
@@ -155,15 +173,43 @@ export const AssessmentForm: React.FC = () => {
                          <div>
                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Objetivo da Dieta</label>
                             <div className="relative">
-                                <Target className="absolute left-3 top-3 text-slate-400 w-5 h-5" />
-                                <input 
-                                    type="text"
-                                    value={formData.objective || ''}
-                                    onChange={e => setFormData({...formData, objective: e.target.value})}
-                                    className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-slate-900 dark:text-white"
-                                    placeholder="Ex: Hipertrofia, Emagrecimento..."
-                                />
+                                <Target className="absolute left-3 top-3.5 text-slate-400 w-5 h-5 z-10" />
+                                <select 
+                                    value={isOtherObjective ? 'Outro' : formData.objective || ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === 'Outro') {
+                                            setIsOtherObjective(true);
+                                            setFormData({...formData, objective: ''});
+                                        } else {
+                                            setIsOtherObjective(false);
+                                            setFormData({...formData, objective: val});
+                                        }
+                                    }}
+                                    className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-slate-900 dark:text-white appearance-none cursor-pointer"
+                                >
+                                    <option value="">Selecione...</option>
+                                    {standardObjectives.map(opt => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                    <option value="Outro">Outro</option>
+                                </select>
+                                <div className="absolute right-4 top-4 pointer-events-none border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-400"></div>
                             </div>
+
+                            {/* Campo de texto condicional se 'Outro' for selecionado */}
+                            {isOtherObjective && (
+                                <div className="mt-3 animate-in fade-in slide-in-from-top-2">
+                                    <input 
+                                        type="text"
+                                        value={formData.objective || ''}
+                                        onChange={e => setFormData({...formData, objective: e.target.value})}
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-slate-900 dark:text-white"
+                                        placeholder="Especifique o objetivo..."
+                                        autoFocus
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <div>

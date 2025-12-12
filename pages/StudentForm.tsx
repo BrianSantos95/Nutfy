@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Upload, Save, User, Calendar, Phone, Clock, FileText, HeartPulse, AlertOctagon, Utensils, Dumbbell, CheckSquare, Square } from 'lucide-react';
+import { Upload, Save, User, Calendar, Phone, Clock, FileText, HeartPulse, AlertOctagon, Utensils, Dumbbell, CheckSquare, Square, Loader2 } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { Student } from '../types';
 import { storageService } from '../services/storageService';
@@ -9,6 +9,7 @@ export const StudentForm: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = !!id;
+  const [isSaving, setIsSaving] = useState(false);
   
   const today = new Date().toISOString().split('T')[0];
 
@@ -35,30 +36,33 @@ export const StudentForm: React.FC = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isEditing && id) {
-      const students = storageService.getStudents();
-      const student = students.find(s => s.id === id);
-      if (student) {
-        // Garantir que o objeto anamnesis exista mesmo em registros antigos
-        const mergedStudent = {
-            ...student,
-            anamnesis: {
-                objective: '',
-                healthHistory: '',
-                restrictions: [],
-                allergies: '',
-                preferences: '',
-                activityLevel: '',
-                generalNotes: '',
-                ...student.anamnesis
+    const loadStudent = async () => {
+        if (isEditing && id) {
+            const students = await storageService.getStudents();
+            const student = students.find(s => s.id === id);
+            if (student) {
+                // Garantir que o objeto anamnesis exista mesmo em registros antigos
+                const mergedStudent = {
+                    ...student,
+                    anamnesis: {
+                        objective: '',
+                        healthHistory: '',
+                        restrictions: [],
+                        allergies: '',
+                        preferences: '',
+                        activityLevel: '',
+                        generalNotes: '',
+                        ...student.anamnesis
+                    }
+                };
+                setFormData(mergedStudent as Partial<Student>);
+                setLogoPreview(student.logoUrl || null);
+            } else {
+                navigate('/');
             }
-        };
-        setFormData(mergedStudent as Partial<Student>);
-        setLogoPreview(student.logoUrl || null);
-      } else {
-        navigate('/');
-      }
-    }
+        }
+    };
+    loadStudent();
   }, [id, isEditing, navigate]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,7 +72,7 @@ export const StudentForm: React.FC = () => {
         const base64 = await storageService.fileToBase64(file);
         setLogoPreview(base64);
         setFormData(prev => ({ ...prev, logoUrl: base64 }));
-      } catch (err) { alert('Erro ao carregar imagem'); }
+      } catch (err) { alert('Erro ao carregar imagem. Verifique se você está logado.'); }
     }
   };
 
@@ -90,29 +94,44 @@ export const StudentForm: React.FC = () => {
       handleAnamnesisChange('restrictions', updated);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) return alert('O nome é obrigatório.');
+    if (!formData.contact) return alert('O contato é obrigatório.');
+    if (!formData.birthDate) return alert('A data de nascimento é obrigatória.');
     if (!formData.planEndDate) return alert('A data de fim do plano é obrigatória.');
 
-    const students = storageService.getStudents();
-    let newStudentId = id;
-    
-    if (isEditing && id) {
-      const updatedStudents = students.map(s => s.id === id ? { ...s, ...formData } as Student : s);
-      storageService.saveStudents(updatedStudents);
-      alert('Cadastro e Anamnese atualizados com sucesso!');
-    } else {
-      newStudentId = crypto.randomUUID();
-      const newStudent: Student = {
-        ...formData as Student,
-        id: newStudentId!,
-        createdAt: new Date().toISOString()
-      };
-      storageService.saveStudents([...students, newStudent]);
-      alert('Paciente cadastrado com sucesso!');
+    setIsSaving(true);
+
+    try {
+        let studentPayload: Student;
+        
+        if (isEditing && id) {
+            // Edição
+            studentPayload = { 
+                ...formData as Student, 
+                id: id // Garante que o ID é mantido
+            };
+        } else {
+            // Criação
+            studentPayload = {
+                ...formData as Student,
+                id: crypto.randomUUID(),
+                createdAt: new Date().toISOString()
+            };
+        }
+
+        // Salva SOMENTE este estudante
+        await storageService.saveStudent(studentPayload);
+        
+        alert(isEditing ? 'Cadastro atualizado com sucesso!' : 'Paciente cadastrado com sucesso!');
+        navigate(`/student/${studentPayload.id}/progress`);
+    } catch (error: any) {
+        console.error(error);
+        alert(`Erro ao salvar: ${error.message || 'Erro desconhecido'}`);
+    } finally {
+        setIsSaving(false);
     }
-    navigate(`/student/${newStudentId}/progress`);
   };
 
   const handleDateChange = (field: keyof Student, value: string) => {
@@ -173,7 +192,7 @@ export const StudentForm: React.FC = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Contato</label>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Contato *</label>
                                 <div className="relative">
                                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                                     <input
@@ -186,17 +205,19 @@ export const StudentForm: React.FC = () => {
                                         }}
                                         className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900 dark:text-white"
                                         placeholder="(11) 999999999"
+                                        required
                                     />
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nascimento</label>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nascimento *</label>
                                 <input
                                     type="date"
                                     max="9999-12-31"
                                     value={formData.birthDate || ''}
                                     onChange={e => handleDateChange('birthDate', e.target.value)}
                                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
+                                    required
                                 />
                             </div>
                         </div>
@@ -408,9 +429,10 @@ export const StudentForm: React.FC = () => {
             <div className="pt-4 flex justify-end">
                 <button
                 type="submit"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-none transition-all active:scale-95 flex items-center gap-2 text-lg"
+                disabled={isSaving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-none transition-all active:scale-95 flex items-center gap-2 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                <Save size={22} />
+                {isSaving ? <Loader2 className="animate-spin" /> : <Save size={22} />}
                 {isEditing ? 'Salvar Tudo' : 'Cadastrar Paciente'}
                 </button>
             </div>

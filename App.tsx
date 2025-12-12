@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Dashboard } from './pages/Dashboard';
@@ -21,8 +21,30 @@ import { Lock, Loader2 } from 'lucide-react';
 // Protege rotas verificando LOGIN e ASSINATURA
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user, loading } = useAuth();
+    const [checkingSub, setCheckingSub] = useState(true);
+    const [isExpired, setIsExpired] = useState(false);
+
+    useEffect(() => {
+        const check = async () => {
+            if (user) {
+                try {
+                    const sub = await subscriptionService.initializeSubscription();
+                    if (sub.status === 'expired') {
+                        setIsExpired(true);
+                    }
+                } catch (error) {
+                    console.error("Erro ao verificar assinatura (Ignorando para não bloquear acesso se for erro de conexão):", error);
+                    // Não bloqueia em caso de erro técnico para não trancar o usuário
+                }
+            }
+            setCheckingSub(false);
+        };
+        if (!loading) {
+            check();
+        }
+    }, [user, loading]);
     
-    if (loading) {
+    if (loading || checkingSub) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <Loader2 className="animate-spin text-emerald-600 w-10 h-10" />
@@ -34,8 +56,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
         return <Navigate to="/login" replace />;
     }
 
-    const sub = subscriptionService.initializeSubscription();
-    if (sub.status === 'expired') {
+    if (isExpired) {
         return (
             <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 text-center">
                 <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">

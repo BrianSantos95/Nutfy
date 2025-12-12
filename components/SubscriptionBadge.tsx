@@ -10,9 +10,13 @@ export const SubscriptionBadge: React.FC = () => {
     const [daysRemaining, setDaysRemaining] = useState(0);
 
     useEffect(() => {
-        const sub = subscriptionService.initializeSubscription();
-        setStatus(sub.status);
-        setDaysRemaining(subscriptionService.getDaysRemaining());
+        const load = async () => {
+            const sub = await subscriptionService.initializeSubscription();
+            setStatus(sub.status);
+            const days = await subscriptionService.getDaysRemaining();
+            setDaysRemaining(days);
+        };
+        load();
     }, []);
 
     const handleClick = () => {

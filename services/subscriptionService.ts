@@ -3,8 +3,8 @@ import { storageService } from './storageService';
 
 export const subscriptionService = {
   
-  initializeSubscription: (): Subscription => {
-    const existing = storageService.getSubscription();
+  initializeSubscription: async (): Promise<Subscription> => {
+    const existing = await storageService.getSubscription();
     
     // Verificação de status atual
     if (existing) {
@@ -14,7 +14,7 @@ export const subscriptionService = {
             const expDate = new Date(existing.planExpirationDate);
             if (now > expDate) {
                 const expiredSub: Subscription = { ...existing, status: 'expired' };
-                storageService.saveSubscription(expiredSub);
+                await storageService.saveSubscription(expiredSub);
                 return expiredSub;
             }
         }
@@ -25,7 +25,7 @@ export const subscriptionService = {
             const trialEnd = new Date(existing.trialEndDate);
             if (now > trialEnd) {
                 const expiredSub: Subscription = { ...existing, status: 'expired' };
-                storageService.saveSubscription(expiredSub);
+                await storageService.saveSubscription(expiredSub);
                 return expiredSub;
             }
         }
@@ -45,12 +45,12 @@ export const subscriptionService = {
         planType: null
     };
 
-    storageService.saveSubscription(newSub);
+    await storageService.saveSubscription(newSub);
     return newSub;
   },
 
-  getDaysRemaining: (): number => {
-      const sub = subscriptionService.initializeSubscription();
+  getDaysRemaining: async (): Promise<number> => {
+      const sub = await subscriptionService.initializeSubscription();
       const now = new Date();
       
       if (sub.status === 'trial') {
@@ -70,8 +70,8 @@ export const subscriptionService = {
       return 0;
   },
 
-  upgradeSubscription: (type: PlanType): void => {
-      const sub = storageService.getSubscription();
+  upgradeSubscription: async (type: PlanType): Promise<void> => {
+      const sub = await storageService.getSubscription();
       if (!sub) return;
 
       const now = new Date();
@@ -90,7 +90,7 @@ export const subscriptionService = {
           planExpirationDate: expirationDate.toISOString()
       };
 
-      storageService.saveSubscription(upgradedSub);
+      await storageService.saveSubscription(upgradedSub);
   },
   
   // Cancela a assinatura removendo os dados locais e recarregando a página

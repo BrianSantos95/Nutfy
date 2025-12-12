@@ -1,31 +1,55 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Leaf, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
+import { supabase } from '../services/supabase';
+import { Leaf, Mail, Lock, Loader2, ArrowRight, HelpCircle } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { signIn } = useAuth();
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [error, setError] = useState('');
+  const [msg, setMsg] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setMsg('');
 
-    // Simulação de delay para UX
-    setTimeout(async () => {
-        if (email && password) {
-            await signIn(email);
-            navigate('/');
-        } else {
-            setError('Preencha todos os campos.');
-            setLoading(false);
-        }
-    }, 800);
+    try {
+        await signIn(email, password);
+        navigate('/');
+    } catch (err: any) {
+        setError(err.message || 'Erro ao fazer login.');
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+      if (!email) {
+          setError('Digite seu e-mail para recuperar a senha.');
+          return;
+      }
+      setResetLoading(true);
+      setError('');
+      setMsg('');
+      try {
+          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+              redirectTo: window.location.origin + '/#/reset-password',
+          });
+          if (error) throw error;
+          setMsg('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+      } catch (err: any) {
+          setError(err.message || 'Erro ao enviar e-mail de recuperação.');
+      } finally {
+          setResetLoading(false);
+      }
   };
 
   return (
@@ -42,7 +66,7 @@ export const Login: React.FC = () => {
             </div>
             <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight">Nutfy</h1>
             <p className="text-lg text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-              A ferramenta profissional para nutricionistas que transformam vidas através da alimentação.
+              Seu assistente nutricional inteligente.
             </p>
          </div>
       </div>
@@ -52,12 +76,18 @@ export const Login: React.FC = () => {
          <div className="max-w-md w-full">
             <div className="text-center lg:text-left mb-10">
                <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Bem-vindo de volta</h2>
-               <p className="text-slate-500 dark:text-slate-400">Modo Offline Ativo. Entre com seus dados locais.</p>
+               <p className="text-slate-500 dark:text-slate-400">Entre para gerenciar seus pacientes.</p>
             </div>
 
             {error && (
               <div className="mb-6 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm font-medium border border-red-100 dark:border-red-900/30">
                 {error}
+              </div>
+            )}
+            
+            {msg && (
+              <div className="mb-6 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-4 py-3 rounded-xl text-sm font-medium border border-emerald-100 dark:border-emerald-900/30">
+                {msg}
               </div>
             )}
 
@@ -91,13 +121,17 @@ export const Login: React.FC = () => {
                      />
                   </div>
                </div>
-
-               <div className="flex items-center justify-between text-sm">
-                  <label className="flex items-center gap-2 cursor-pointer text-slate-600 dark:text-slate-400">
-                     <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
-                     Lembrar de mim
-                  </label>
-                  <a href="#" className="font-bold text-emerald-600 hover:text-emerald-700">Esqueceu a senha?</a>
+               
+               <div className="flex justify-end">
+                   <button 
+                     type="button"
+                     onClick={handleForgotPassword}
+                     disabled={resetLoading}
+                     className="text-sm font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-500 dark:hover:text-emerald-400 flex items-center gap-1 transition-colors disabled:opacity-50"
+                   >
+                       {resetLoading ? <Loader2 size={14} className="animate-spin"/> : <HelpCircle size={14} />}
+                       Esqueceu sua senha?
+                   </button>
                </div>
 
                <button 
