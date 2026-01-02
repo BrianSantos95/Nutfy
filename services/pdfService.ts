@@ -168,7 +168,7 @@ export const generatePDF = (student: Student, assessment: Assessment, meals: Mea
         const patientH = 35;
         drawCard(margin, currentY, contentWidth, patientH);
 
-        const colW = contentWidth / 4;
+        const colW = contentWidth / 5;
         const labelsY = currentY + 10;
         const valuesY = currentY + 22;
 
@@ -181,25 +181,36 @@ export const generatePDF = (student: Student, assessment: Assessment, meals: Mea
             doc.text(label.toUpperCase(), x, labelsY, { align: 'center' });
 
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(11);
+            doc.setFontSize(10); // Reduzido levemente de 11 para 10 para caber nomes maiores
             setText(COLORS.slate900);
-            doc.text(value, x, valuesY, { align: 'center' });
+
+            // Truncar nome se for absurdamente grande, mas permitir nome + sobrenome
+            const displayValue = value.length > 20 ? value.substring(0, 18) + '...' : value;
+            doc.text(displayValue, x, valuesY, { align: 'center' });
         };
 
-        drawStat("Paciente", student.name.split(' ')[0], 0);
-        drawStat("Peso Atual", `${assessment.weight} kg`, 1);
-        drawStat("Meta Diária", `${assessment.calorieGoal} kcal`, 2);
+        drawStat("Paciente", student.name, 0);
 
-        // Objetivo (pode ser longo, truncar se precisar)
+        // Formatação robusta da data da avaliação
+        const assessmentDate = assessment.date
+            ? assessment.date.split('T')[0].split('-').reverse().join('/')
+            : '--/--/----';
+        drawStat("Data", assessmentDate, 1);
+
+        drawStat("Peso", `${assessment.weight} kg`, 2);
+        drawStat("Meta Diária", `${assessment.calorieGoal} kcal`, 3);
+
+        // Objetivo
         const obj = student.anamnesis?.objective || assessment.objective || "Saúde";
-        drawStat("Objetivo", obj.length > 15 ? obj.substring(0, 15) + '...' : obj, 3);
+        drawStat("Objetivo", obj.length > 12 ? obj.substring(0, 12) + '...' : obj, 4);
 
-        // Divisores Verticais
+        // Divisores Verticais (Agora são 4 linhas para 5 colunas)
         setDraw(COLORS.slate100);
         doc.setLineWidth(0.2);
         doc.line(margin + colW, currentY + 8, margin + colW, currentY + patientH - 8);
         doc.line(margin + (colW * 2), currentY + 8, margin + (colW * 2), currentY + patientH - 8);
         doc.line(margin + (colW * 3), currentY + 8, margin + (colW * 3), currentY + patientH - 8);
+        doc.line(margin + (colW * 4), currentY + 8, margin + (colW * 4), currentY + patientH - 8);
 
         currentY += patientH + 10;
 
