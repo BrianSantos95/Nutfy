@@ -170,39 +170,39 @@ export const generatePDF = (student: Student, assessment: Assessment, meals: Mea
 
         const colW = contentWidth / 5;
         const labelsY = currentY + 10;
-        const valuesY = currentY + 22;
+        const valuesY = currentY + 20; // Ajustado de 22 para 20 para dar espaço a 2 linhas se necessário
 
         const drawStat = (label: string, value: string, col: number) => {
             const x = margin + (col * colW) + (colW / 2);
 
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(7);
+            doc.setFontSize(6); // Menor para não encavalar
             setText(COLORS.slate400);
             doc.text(label.toUpperCase(), x, labelsY, { align: 'center' });
 
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(10); // Reduzido levemente de 11 para 10 para caber nomes maiores
+            doc.setFontSize(8.5); // Reduzido para 8.5 para caber melhor em 5 colunas
             setText(COLORS.slate900);
 
-            // Truncar nome se for absurdamente grande, mas permitir nome + sobrenome
-            const displayValue = value.length > 20 ? value.substring(0, 18) + '...' : value;
-            doc.text(displayValue, x, valuesY, { align: 'center' });
+            // Permite quebra de linha para nomes ou objetivos longos
+            const splitValue = doc.splitTextToSize(value, colW - 4);
+            doc.text(splitValue, x, valuesY, { align: 'center' });
         };
 
         drawStat("Paciente", student.name, 0);
 
-        // Formatação robusta da data da avaliação
-        const assessmentDate = assessment.date
+        // Data da Avaliação
+        const aDate = assessment.date
             ? assessment.date.split('T')[0].split('-').reverse().join('/')
             : '--/--/----';
-        drawStat("Data", assessmentDate, 1);
+        drawStat("Data", aDate, 1);
 
         drawStat("Peso", `${assessment.weight} kg`, 2);
-        drawStat("Meta Diária", `${assessment.calorieGoal} kcal`, 3);
+        drawStat("Meta", `${assessment.calorieGoal} kcal`, 3); // "Meta" em vez de "Meta Diária"
 
         // Objetivo
         const obj = student.anamnesis?.objective || assessment.objective || "Saúde";
-        drawStat("Objetivo", obj.length > 12 ? obj.substring(0, 12) + '...' : obj, 4);
+        drawStat("Objetivo", obj, 4);
 
         // Divisores Verticais (Agora são 4 linhas para 5 colunas)
         setDraw(COLORS.slate100);
