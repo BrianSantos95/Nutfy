@@ -204,7 +204,8 @@ export const storageService = {
       name: data.name,
       title: data.title,
       registration: data.registration,
-      logoUrl: data.logo_url
+      logoUrl: data.logo_url,
+      phone: data.phone
     };
   },
 
@@ -217,7 +218,8 @@ export const storageService = {
       name: profile.name,
       title: profile.title,
       registration: profile.registration,
-      logo_url: profile.logoUrl
+      logo_url: profile.logoUrl,
+      phone: profile.phone
     }, { onConflict: 'user_id' });
 
     if (error) throw error;

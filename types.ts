@@ -17,9 +17,9 @@ export interface Student {
   createdAt: string;
   contact?: string;      // Novo: Telefone/Email
   birthDate?: string;    // Novo: Data de Nascimento
-  nextAppointment?: string; 
+  nextAppointment?: string;
   extraNotes?: string;   // Notas gerais do aluno (administrativas)
-  
+
   // Dados de Anamnese (Novo)
   anamnesis?: Anamnesis;
 
@@ -37,11 +37,11 @@ export interface Assessment {
   calorieGoal: number;
   bodyFat?: number;
   notes?: string;       // Observações da avaliação
-  
+
   // Anamnese Específica desta avaliação (opcional, pode variar com o tempo)
   objective?: string;
   activityLevel?: string;
-  
+
   status: 'active' | 'archived'; // A última é sempre active
 }
 
@@ -61,7 +61,7 @@ export interface Meal {
   description: string;
   quantity: string;
   calories: number;
-  time: string; 
+  time: string;
   type: 'normal' | 'free';
   foods?: FoodItem[];
 }
@@ -71,6 +71,7 @@ export interface ProfessionalProfile {
   title?: string;
   registration?: string;
   logoUrl?: string;
+  phone?: string;
 }
 
 // Subscription types

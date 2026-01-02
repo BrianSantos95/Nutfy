@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
-import { User, Award, Hash, Save, Upload, Loader2 } from 'lucide-react';
+import { User, Award, Hash, Save, Upload, Loader2, Phone } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { ProfessionalProfile } from '../types';
 import { useNotification } from '../contexts/NotificationContext';
@@ -10,7 +10,8 @@ export const Profile: React.FC = () => {
     name: '',
     title: '',
     registration: '',
-    logoUrl: ''
+    logoUrl: '',
+    phone: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -141,6 +142,25 @@ export const Profile: React.FC = () => {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">WhatsApp / Telefone de Contato</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="(00) 00000-0000"
+                  value={profile.phone || ''}
+                  onChange={e => {
+                    let val = e.target.value.replace(/\D/g, '').slice(0, 11);
+                    if (val.length > 2) val = `(${val.slice(0, 2)}) ${val.slice(2)}`;
+                    if (val.length > 10) val = `${val.slice(0, 10)}-${val.slice(10)}`; // Ajuste visual básico
+                    setProfile({ ...profile, phone: val });
+                  }}
+                  className="w-full pl-10 pr-4 py-3 bg-white text-slate-900 rounded-lg border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none placeholder-slate-400"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Título Profissional (Opcional)</label>
@@ -209,6 +229,7 @@ export const Profile: React.FC = () => {
                   <div className="text-xs text-slate-500 mt-1">
                     {profile.title} <br />
                     {profile.registration}
+                    {profile.phone && <><br />{profile.phone}</>}
                   </div>
                 )}
               </div>
