@@ -27,15 +27,22 @@ export const SubscriptionPage: React.FC = () => {
 
     const handleSubscribe = () => {
         setIsLoading(true);
-        // Simulação de processamento de pagamento
-        setTimeout(async () => {
-            if (selectedPlan) {
-                await subscriptionService.upgradeSubscription(selectedPlan);
-                setIsLoading(false);
-                showNotification('Pagamento confirmado! Seu plano Premium está ativo.', 'success');
-                navigate('/');
-            }
-        }, 1500);
+
+        let checkoutUrl = '';
+        if (selectedPlan === 'monthly') {
+            checkoutUrl = 'https://pay.kiwify.com.br/SEU_LINK_MENSAL'; // Substitua pelo seu link real
+        } else {
+            checkoutUrl = 'https://pay.kiwify.com.br/SEU_LINK_ANUAL'; // Substitua pelo seu link real
+        }
+
+        // Abre o checkout em nova aba
+        window.open(checkoutUrl, '_blank');
+
+        // Mantém loading por um tempo e avisa
+        setTimeout(() => {
+            setIsLoading(false);
+            showNotification('Direcionando para o pagamento seguro Kiwify...', 'success');
+        }, 1000);
     };
 
     const handleCancelProcess = () => {
@@ -59,8 +66,8 @@ export const SubscriptionPage: React.FC = () => {
                 <div
                     onClick={() => setSelectedPlan('monthly')}
                     className={`relative p-8 rounded-2xl border-2 cursor-pointer transition-all ${selectedPlan === 'monthly'
-                            ? 'border-emerald-500 bg-white dark:bg-slate-900 shadow-xl scale-105 z-10'
-                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-emerald-300 dark:hover:border-emerald-700 opacity-80'
+                        ? 'border-emerald-500 bg-white dark:bg-slate-900 shadow-xl scale-105 z-10'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-emerald-300 dark:hover:border-emerald-700 opacity-80'
                         }`}
                 >
                     <div className="text-left">
@@ -96,8 +103,8 @@ export const SubscriptionPage: React.FC = () => {
                 <div
                     onClick={() => setSelectedPlan('yearly')}
                     className={`relative p-8 rounded-2xl border-2 cursor-pointer transition-all ${selectedPlan === 'yearly'
-                            ? 'border-purple-500 bg-white dark:bg-slate-900 shadow-xl scale-105 z-10'
-                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-purple-300 dark:hover:border-purple-700 opacity-80'
+                        ? 'border-purple-500 bg-white dark:bg-slate-900 shadow-xl scale-105 z-10'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-purple-300 dark:hover:border-purple-700 opacity-80'
                         }`}
                 >
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
@@ -149,8 +156,8 @@ export const SubscriptionPage: React.FC = () => {
                     onClick={handleSubscribe}
                     disabled={isLoading}
                     className={`w-full py-4 rounded-xl font-bold text-white text-lg shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${selectedPlan === 'yearly'
-                            ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200 dark:shadow-none'
-                            : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 dark:shadow-none'
+                        ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200 dark:shadow-none'
+                        : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 dark:shadow-none'
                         }`}
                 >
                     {isLoading ? (
@@ -221,8 +228,8 @@ export const SubscriptionPage: React.FC = () => {
                                     onClick={handleCancelProcess}
                                     disabled={cancelConfirmation.toLowerCase() !== 'cancelar'}
                                     className={`flex-1 font-bold py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${cancelConfirmation.toLowerCase() === 'cancelar'
-                                            ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-200 dark:shadow-none cursor-pointer active:scale-95'
-                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                                        ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-200 dark:shadow-none cursor-pointer active:scale-95'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
                                         }`}
                                 >
                                     Confirmar
