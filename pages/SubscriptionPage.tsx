@@ -30,9 +30,9 @@ export const SubscriptionPage: React.FC = () => {
 
         let checkoutUrl = '';
         if (selectedPlan === 'monthly') {
-            checkoutUrl = 'https://pay.kiwify.com.br/SEU_LINK_MENSAL'; // Substitua pelo seu link real
+            checkoutUrl = 'https://pay.kiwify.com.br/ZzvoVtk';
         } else {
-            checkoutUrl = 'https://pay.kiwify.com.br/SEU_LINK_ANUAL'; // Substitua pelo seu link real
+            checkoutUrl = 'https://pay.kiwify.com.br/MkpaEHM';
         }
 
         // Abre o checkout em nova aba
